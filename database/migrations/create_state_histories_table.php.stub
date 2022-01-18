@@ -22,6 +22,9 @@ class CreateStateHistoriesTable extends Migration
             $table->string('from')->nullable();
             $table->string('to')->nullable();
 
+            $table->string('states');
+
+
             $table->json('custom_properties')->nullable();
             $table->nullableMorphs('responsible');
 

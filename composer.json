@@ -1,14 +1,19 @@
 {
-    "name": "asantibanez/laravel-eloquent-state-machines",
+    "name": "byteit/laravel-extended-state-machines",
     "description": "State machines for your Laravel Eloquent models",
     "keywords": [
         "asantibanez",
         "laravel-eloquent-state-machines"
     ],
-    "homepage": "https://github.com/asantibanez/laravel-eloquent-state-machines",
+    "homepage": "https://github.com/byte-it/laravel-extended-state-machines",
     "license": "MIT",
     "type": "library",
     "authors": [
+        {
+            "name": "Johannes Kees",
+            "email": "johannes@lets-byte.it",
+            "role": "Developer"
+        },
         {
             "name": "Andrés Santibáñez",
             "email": "santibanez.andres@gmail.com",
@@ -16,23 +21,23 @@
         }
     ],
     "require": {
-        "php": "^7.2|^7.3|^7.4|^8.0",
-        "illuminate/support": "^6.0|^7.0|^8.0",
+        "php": "^8.1",
+        "illuminate/support": "^8.0",
         "javoscript/laravel-macroable-models": "^1.0"
     },
     "require-dev": {
         "laravel/legacy-factories": "^1.0.4",
-        "orchestra/testbench": "^4.0|^5.0|^6.0",
-        "phpunit/phpunit": "^8.0|^9.0"
+        "orchestra/testbench": "^6.0",
+        "phpunit/phpunit": "^9.0"
     },
     "autoload": {
         "psr-4": {
-            "Asantibanez\\LaravelEloquentStateMachines\\": "src"
+            "byteit\\LaravelExtendedStateMachines\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Asantibanez\\LaravelEloquentStateMachines\\Tests\\": "tests"
+            "byteit\\LaravelExtendedStateMachines\\Tests\\": "tests"
         }
     },
     "scripts": {
@@ -46,7 +51,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Asantibanez\\LaravelEloquentStateMachines\\LaravelEloquentStateMachinesServiceProvider"
+                "byteit\\LaravelExtendedStateMachines\\LaravelExtendedStateMachinesServiceProvider"
             ]
         }
     }

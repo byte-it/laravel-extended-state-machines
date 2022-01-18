@@ -1,10 +1,10 @@
 <?php
 
 
-namespace Asantibanez\LaravelEloquentStateMachines\Jobs;
+namespace byteit\LaravelExtendedStateMachines\Jobs;
 
 
-use Asantibanez\LaravelEloquentStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,7 +15,7 @@ class PendingTransitionsDispatcher implements ShouldQueue
 {
     use InteractsWithQueue, Queueable, Dispatchable, SerializesModels;
 
-    public function handle()
+    public function handle(): void
     {
         PendingTransition::with(['model'])
             ->notApplied()

@@ -1,10 +1,11 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Feature;
+namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesManager;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 
@@ -21,9 +22,9 @@ class QueryScopesTest extends TestCase
 
         $anotherSalesManager = factory(SalesManager::class)->create();
 
-        factory(SalesOrder::class)->create()->status()->transitionTo('approved', [], $salesManager);
-        factory(SalesOrder::class)->create()->status()->transitionTo('approved', [], $salesManager);
-        factory(SalesOrder::class)->create()->status()->transitionTo('approved', [], $anotherSalesManager);
+        factory(SalesOrder::class)->create()->status()->transitionTo(StatusStates::Approved, [], $salesManager);
+        factory(SalesOrder::class)->create()->status()->transitionTo(StatusStates::Approved, [], $salesManager);
+        factory(SalesOrder::class)->create()->status()->transitionTo(StatusStates::Approved, [], $anotherSalesManager);
 
         //Act
         $salesOrders = SalesOrder::with([])
@@ -37,7 +38,7 @@ class QueryScopesTest extends TestCase
         $this->assertEquals(2, $salesOrders->count());
 
         $salesOrders->each(function (SalesOrder $salesOrder) use ($salesManager) {
-            $this->assertEquals($salesManager->id, $salesOrder->status()->snapshotWhen('approved')->responsible->id);
+            $this->assertEquals($salesManager->id, $salesOrder->status()->snapshotWhen(StatusStates::Approved)->responsible->id);
         });
     }
 
@@ -49,8 +50,8 @@ class QueryScopesTest extends TestCase
 
         $anotherSalesManager = factory(SalesManager::class)->create();
 
-        factory(SalesOrder::class)->create()->status()->transitionTo('approved', [], $salesManager);
-        factory(SalesOrder::class)->create()->status()->transitionTo('approved', [], $anotherSalesManager);
+        factory(SalesOrder::class)->create()->status()->transitionTo(StatusStates::Approved, [], $salesManager);
+        factory(SalesOrder::class)->create()->status()->transitionTo(StatusStates::Approved, [], $anotherSalesManager);
 
         //Act
         $salesOrders = SalesOrder::with([])
@@ -69,16 +70,16 @@ class QueryScopesTest extends TestCase
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
-        $salesOrder->status()->transitionTo('approved');
-        $salesOrder->status()->transitionTo('processed');
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->status()->transitionTo(StatusStates::Processed);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();
-        $anotherSalesOrder->status()->transitionTo('approved');
+        $anotherSalesOrder->status()->transitionTo(StatusStates::Approved);
 
         //Act
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->withTransition('approved', 'processed');
+                $query->withTransition(StatusStates::Approved, StatusStates::Processed);
             })
             ->get()
         ;
@@ -94,16 +95,16 @@ class QueryScopesTest extends TestCase
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
-        $salesOrder->status()->transitionTo('approved');
-        $salesOrder->status()->transitionTo('processed');
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->status()->transitionTo(StatusStates::Processed);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();
-        $anotherSalesOrder->status()->transitionTo('approved');
+        $anotherSalesOrder->status()->transitionTo(StatusStates::Approved);
 
         //Act
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo('processed');
+                $query->transitionedTo(StatusStates::Processed);
             })
             ->get()
         ;
@@ -119,16 +120,16 @@ class QueryScopesTest extends TestCase
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
-        $salesOrder->status()->transitionTo('approved');
-        $salesOrder->status()->transitionTo('processed');
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->status()->transitionTo(StatusStates::Processed);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();
-        $anotherSalesOrder->status()->transitionTo('approved');
+        $anotherSalesOrder->status()->transitionTo(StatusStates::Approved);
 
         //Act
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedFrom('approved');
+                $query->transitionedFrom(StatusStates::Approved);
             })
             ->get()
         ;
@@ -144,10 +145,10 @@ class QueryScopesTest extends TestCase
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
-        $salesOrder->status()->transitionTo('approved', ['comments' => 'Checked']);
+        $salesOrder->status()->transitionTo(StatusStates::Approved, ['comments' => 'Checked']);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();
-        $anotherSalesOrder->status()->transitionTo('approved', ['comments' => 'Needs further revision']);
+        $anotherSalesOrder->status()->transitionTo(StatusStates::Approved, ['comments' => 'Needs further revision']);
 
         //Act
         $salesOrders = SalesOrder::with([])
@@ -168,21 +169,21 @@ class QueryScopesTest extends TestCase
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
-        $salesOrder->status()->transitionTo('approved');
-        $salesOrder->status()->transitionTo('processed');
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->status()->transitionTo(StatusStates::Processed);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();
-        $anotherSalesOrder->status()->transitionTo('approved');
+        $anotherSalesOrder->status()->transitionTo(StatusStates::Approved);
 
         //Act
 
 
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo('approved');
+                $query->transitionedTo(StatusStates::Approved);
             })
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo('processed');
+                $query->transitionedTo(StatusStates::Processed);
             })
             ->get()
         ;

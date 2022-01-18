@@ -1,9 +1,9 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Unit;
+namespace byteit\LaravelExtendedStateMachines\Tests\Unit;
 
-use Asantibanez\LaravelEloquentStateMachines\Models\StateHistory;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 
@@ -13,7 +13,7 @@ class StateHistoryTest extends TestCase
     use WithFaker;
 
     /** @test */
-    public function can_get_custom_property()
+    public function can_get_custom_property(): void
     {
         //Arrange
         $comments = $this->faker->sentence;
@@ -32,7 +32,7 @@ class StateHistoryTest extends TestCase
     }
 
     /** @test */
-    public function can_get_all_custom_properties()
+    public function can_get_all_custom_properties(): void
     {
         //Arrange
         $customProperties = [

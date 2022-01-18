@@ -2,7 +2,7 @@
 
 namespace DummyNamespace;
 
-use Asantibanez\LaravelEloquentStateMachines\StateMachines\StateMachine;
+use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
 
 class DummyClass extends StateMachine
 {

@@ -1,11 +1,12 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Feature;
+namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use Asantibanez\LaravelEloquentStateMachines\Jobs\PendingTransitionExecutor;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesManager;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionExecutor;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -26,13 +27,13 @@ class PendingTransitionExecutorTest extends TestCase
         $salesOrder = factory(SalesOrder::class)->create();
 
         $pendingTransition = $salesOrder->status()->postponeTransitionTo(
-            'approved',
+            StatusStates::Approved,
             Carbon::now(),
             ['comments' => 'All good!'],
             $responsible = $salesManager
         );
 
-        $this->assertTrue($salesOrder->status()->is('pending'));
+        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
 
         $this->assertTrue($salesOrder->status()->hasPendingTransitions());
 
@@ -46,7 +47,7 @@ class PendingTransitionExecutorTest extends TestCase
         //Assert
         $salesOrder->refresh();
 
-        $this->assertTrue($salesOrder->status()->is('approved'));
+        $this->assertTrue($salesOrder->status()->is(StatusStates::Approved));
 
         $this->assertEquals('All good!', $salesOrder->status()->getCustomProperty('comments'));
 
@@ -61,11 +62,11 @@ class PendingTransitionExecutorTest extends TestCase
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
 
-        $salesOrder->status()->postponeTransitionTo('approved', Carbon::now());
+        $salesOrder->status()->postponeTransitionTo(StatusStates::Approved, Carbon::now());
 
         //Manually update state
         $salesOrder->update(['status' => 'processed']);
-        $this->assertTrue($salesOrder->status()->is('processed'));
+        $this->assertTrue($salesOrder->status()->is(StatusStates::Processed));
 
         $this->assertTrue($salesOrder->status()->hasPendingTransitions());
 

@@ -1,10 +1,10 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\TestModels;
+namespace byteit\LaravelExtendedStateMachines\Tests\TestModels;
 
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStateMachine;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestStateMachines\SalesOrders\StatusStateMachine;
-use Asantibanez\LaravelEloquentStateMachines\Traits\HasStateMachines;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStates;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
+use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Illuminate\Database\Eloquent\Model;
 
 class SalesOrder extends Model
@@ -13,8 +13,11 @@ class SalesOrder extends Model
 
     protected $guarded = [];
 
+
     public $stateMachines = [
-        'status' => StatusStateMachine::class,
-        'fulfillment' => FulfillmentStateMachine::class,
+        'status' => StatusStates::class,
+        'fulfillment' => FulfillmentStates::class,
     ];
+
+
 }

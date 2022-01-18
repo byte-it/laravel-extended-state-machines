@@ -1,9 +1,9 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\TestModels;
+namespace byteit\LaravelExtendedStateMachines\Tests\TestModels;
 
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestStateMachines\SalesOrders\StatusWithAfterTransitionHookStateMachine;
-use Asantibanez\LaravelEloquentStateMachines\Traits\HasStateMachines;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusWithAfterTransitionHookStates;
+use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Illuminate\Database\Eloquent\Model;
 
 class SalesOrderWithAfterTransitionHook extends Model
@@ -15,6 +15,6 @@ class SalesOrderWithAfterTransitionHook extends Model
     protected $guarded = [];
 
     public $stateMachines = [
-        'status' => StatusWithAfterTransitionHookStateMachine::class,
+        'status' => StatusWithAfterTransitionHookStates::class,
     ];
 }

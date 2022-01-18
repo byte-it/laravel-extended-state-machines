@@ -1,16 +1,16 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Feature;
+namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use Asantibanez\LaravelEloquentStateMachines\Exceptions\TransitionNotAllowedException;
-use Asantibanez\LaravelEloquentStateMachines\Jobs\PendingTransitionExecutor;
-use Asantibanez\LaravelEloquentStateMachines\Jobs\PendingTransitionsDispatcher;
-use Asantibanez\LaravelEloquentStateMachines\Models\PendingTransition;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestJobs\StartSalesOrderFulfillmentJob;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrder;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStateMachine;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestStateMachines\SalesOrders\StatusStateMachine;
+use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
+use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionExecutor;
+use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionsDispatcher;
+use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Tests\TestJobs\StartSalesOrderFulfillmentJob;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStates;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -36,7 +36,7 @@ class PendingTransitionsDispatcherTest extends TestCase
         $salesOrder = factory(SalesOrder::class)->create();
 
         $pendingTransition =
-            $salesOrder->status()->postponeTransitionTo('approved', Carbon::now()->subSecond());
+            $salesOrder->status()->postponeTransitionTo(StatusStates::Approved, Carbon::now()->subSecond());
 
         $this->assertTrue($salesOrder->status()->hasPendingTransitions());
 
@@ -60,7 +60,7 @@ class PendingTransitionsDispatcherTest extends TestCase
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
 
-        $salesOrder->status()->postponeTransitionTo('approved', Carbon::tomorrow());
+        $salesOrder->status()->postponeTransitionTo(StatusStates::Approved, Carbon::tomorrow());
 
         $this->assertTrue($salesOrder->status()->hasPendingTransitions());
 

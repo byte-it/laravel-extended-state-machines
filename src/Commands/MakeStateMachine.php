@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Asantibanez\LaravelEloquentStateMachines\Commands;
+namespace byteit\LaravelExtendedStateMachines\Commands;
 
 
 use Illuminate\Console\GeneratorCommand;

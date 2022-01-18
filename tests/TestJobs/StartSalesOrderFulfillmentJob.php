@@ -1,9 +1,9 @@
 <?php
 
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\TestJobs;
+namespace byteit\LaravelExtendedStateMachines\Tests\TestJobs;
 
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,14 +14,14 @@ class StartSalesOrderFulfillmentJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $salesOrder;
+    public SalesOrder $salesOrder;
 
     public function __construct(SalesOrder $salesOrder)
     {
         $this->salesOrder = $salesOrder;
     }
 
-    public function handle()
+    public function handle(): void
     {
         //
     }

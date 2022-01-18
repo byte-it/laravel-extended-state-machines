@@ -1,10 +1,11 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Feature;
+namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use Asantibanez\LaravelEloquentStateMachines\Models\StateHistory;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 
@@ -28,7 +29,7 @@ class SavesChangedAttributesInStateHistoryTest extends TestCase
         $salesOrder->total = 200;
         $salesOrder->notes = 'other text';
 
-        $salesOrder->status()->transitionTo('approved');
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
 
         //Assert
         $salesOrder->refresh();

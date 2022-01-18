@@ -13,6 +13,7 @@ class CreatePendingTransitionsTable extends Migration
 
             $table->morphs('model');
             $table->string('field');
+            $table->string('states');
 
             $table->string('from')->nullable();
             $table->string('to')->nullable();

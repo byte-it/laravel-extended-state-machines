@@ -1,12 +1,10 @@
 <?php
 
-
 namespace byteit\LaravelExtendedStateMachines\Exceptions;
-
 
 use Exception;
 
-class TransitionNotAllowedException extends Exception
+class InvalidStatesConfigurationException extends Exception
 {
-    //
+
 }

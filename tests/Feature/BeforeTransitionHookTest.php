@@ -1,13 +1,14 @@
 <?php
 
-namespace Asantibanez\LaravelEloquentStateMachines\Tests\Feature;
+namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestCase;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestJobs\BeforeTransitionJob;
-use Asantibanez\LaravelEloquentStateMachines\Tests\TestModels\SalesOrderWithBeforeTransitionHook;
+use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestJobs\BeforeTransitionJob;
+use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrderWithBeforeTransitionHook;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusWithBeforeTransitionHookStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
-use Queue;
+use Illuminate\Support\Facades\Queue;
 
 class BeforeTransitionHookTest extends TestCase
 {
@@ -26,7 +27,7 @@ class BeforeTransitionHookTest extends TestCase
         $this->assertNull($salesOrder->notes);
 
         //Act
-        $salesOrder->status()->transitionTo('approved');
+        $salesOrder->status()->transitionTo(StatusWithBeforeTransitionHookStates::Approved);
 
         //Assert
         $salesOrder->refresh();
@@ -51,7 +52,7 @@ class BeforeTransitionHookTest extends TestCase
         $this->assertNull($salesOrder->notes);
 
         //Act
-        $salesOrder->status()->transitionTo('processed');
+        $salesOrder->status()->transitionTo(StatusWithBeforeTransitionHookStates::Processed);
 
         //Assert
         $salesOrder->refresh();
