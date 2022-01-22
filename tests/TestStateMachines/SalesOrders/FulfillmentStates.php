@@ -17,7 +17,7 @@ enum FulfillmentStates: string implements States
     case Partial = 'partial';
     case Complete = 'complete';
 
-    public function transition(): array
+    public function transitions(): array
     {
         return match ($this) {
             self::Pending => [self::Complete, self::Partial],

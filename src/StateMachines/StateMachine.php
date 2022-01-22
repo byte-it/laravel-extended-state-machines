@@ -4,20 +4,25 @@
 namespace byteit\LaravelExtendedStateMachines\StateMachines;
 
 
+use byteit\LaravelExtendedStateMachines\Events\TransitionCompleted;
+use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
+use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use Carbon\Carbon;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\App;
+use ReflectionAttribute;
 use ReflectionClass;
+use ReflectionEnum;
 use ReflectionException;
 
 /**
@@ -42,9 +47,9 @@ class StateMachine
     public Model $model;
 
     /**
-     * @param  string  $field The model field
+     * @param  string  $field  The model field
      * @param  \Illuminate\Database\Eloquent\Model  $model
-     * @param  string  $states The States enum class
+     * @param  string  $states  The States enum class
      */
     public function __construct(string $field, Model $model, string $states)
     {
@@ -137,7 +142,7 @@ class StateMachine
      */
     public function canBe(States $from, States $to): bool
     {
-        return in_array($to, $from->transition(), true);
+        return in_array($to, $from->transitions(), true);
     }
 
     /**
@@ -163,6 +168,8 @@ class StateMachine
      * @param  mixed|null  $responsible
      *
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
+     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
+     * @throws \ReflectionException
      */
     public function transitionTo(
       States $from,
@@ -178,19 +185,27 @@ class StateMachine
             throw new TransitionNotAllowedException("Transition from [$from->value] to [$to->value] on [$this->states] is illegal");
         }
 
-        $validator = $this->validatorForTransition($from, $to, $this->model);
-        if ($validator !== null && $validator->fails()) {
-            throw new ValidationException($validator);
-        }
+        $reflection = new ReflectionEnum($this->states);
 
-//        $beforeTransitionHooks = $this->beforeTransitionHooks()[$from] ?? [];
-//
-//        collect($beforeTransitionHooks)
-//          ->each(function ($callable) use ($to) {
-//              $callable($to, $this->model);
-//          });
+        $transition = new Transition($this, $from, $to, $this->model,
+          $customProperties, $responsible);
+
+
+        $guards = collect($reflection->getAttributes(HasGuards::class))
+          ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
+          ->map(fn(HasGuards $instance) => $instance->guards)
+          ->flatten()
+          ->map(fn(string $class) => App::make($class));
+
+        collect($guards)
+          ->each(function (Guard $guard) use ($transition) {
+              $guard->guard($transition);
+          });
+
+        TransitionStarted::dispatch($transition);
 
         $field = $this->field;
+
         $this->model->$field = $to;
 
         $changedAttributes = $this->model->getChangedAttributes();
@@ -200,17 +215,19 @@ class StateMachine
         if ($this->recordHistory()) {
             $responsible = $responsible ?? auth()->user();
 
-            $this->model->recordState($field, $from, $to, $customProperties,
-              $responsible, $changedAttributes);
+            $this->model->recordState(
+              $field,
+              $from,
+              $to,
+              $customProperties,
+              $responsible,
+              $changedAttributes
+            );
         }
 
-//        $afterTransitionHooks = $this->afterTransitionHooks()[$to] ?? [];
+        TransitionCompleted::dispatch($transition);
 
-//        collect($afterTransitionHooks)
-//          ->each(function ($callable) use ($from) {
-//              $callable($from, $this->model);
-//          });
-
+        // @todo allow keeping
         $this->cancelAllPendingTransitions();
     }
 
@@ -231,9 +248,7 @@ class StateMachine
       array $customProperties = [],
       $responsible = null
     ): ?PendingTransition {
-        if ($to === $this->currentState()) {
-            return null;
-        }
+
 
         if ( ! $this->canBe($from, $to)) {
             throw new TransitionNotAllowedException();
@@ -265,7 +280,7 @@ class StateMachine
     public function transitions(): array
     {
         return collect($this->states::cases())
-          ->map(fn(States $states) => $states->transition())
+          ->map(fn(States $states) => $states->transitions())
           ->all();
     }
 
@@ -274,11 +289,10 @@ class StateMachine
      */
     public function defaultState(): States
     {
-        try{
+        try {
             $reflection = new ReflectionClass($this->states);
-            /** @var \ReflectionAttribute[] $attributes */
             $attributes = $reflection->getAttributes(DefaultState::class);
-        } catch (ReflectionException $e) {
+        } catch (ReflectionException) {
             $attributes = [];
         }
 
@@ -297,23 +311,11 @@ class StateMachine
             $reflection = new ReflectionClass($this->states);
             $attributes = $reflection->getAttributes(RecordHistory::class);
 
-        } catch (ReflectionException $e) {
+        } catch (ReflectionException) {
             return false;
         }
         /** @var DefaultState[] $attributes */
         return count($attributes) === 1;
-    }
-
-    /**
-     * @param $from
-     * @param $to
-     * @param $model
-     *
-     * @return \Illuminate\Contracts\Validation\Validator|null
-     */
-    public function validatorForTransition($from, $to, $model): ?Validator
-    {
-        return null;
     }
 
 }

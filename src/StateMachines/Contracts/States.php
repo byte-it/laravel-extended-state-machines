@@ -6,5 +6,5 @@ use BackedEnum;
 
 interface States extends BackedEnum
 {
-    public function transition(): array;
+    public function transitions(): array;
 }

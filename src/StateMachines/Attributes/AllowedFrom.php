@@ -6,10 +6,12 @@ use Attribute;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 
 #[Attribute]
-class DefaultState
+class AllowedFrom
 {
-    public function __construct(public States $default)
+    /**
+     * @param  States[]  $allowed
+     */
+    public function __construct(public array $allowed)
     {
     }
-
 }

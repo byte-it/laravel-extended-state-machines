@@ -6,9 +6,13 @@ use Attribute;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 
 #[Attribute]
-class DefaultState
+class AllowedTo
 {
-    public function __construct(public States $default)
+
+    /**
+     * @param  States[]  $allowed
+     */
+    public function __construct(public array $allowed)
     {
     }
 

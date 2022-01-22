@@ -4,8 +4,10 @@ namespace byteit\LaravelExtendedStateMachines\Traits;
 
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\StateMachines\State;
 use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -17,7 +19,6 @@ use Javoscript\MacroableModels\Facades\MacroableModels;
  * Trait HasStateMachines
  *
  * @todo Create separat Contract
- * @todo Add Enum casts
  *
  * @package byteit\LaravelExtendedStateMachines\Traits
  * @property array $stateMachines
@@ -25,6 +26,9 @@ use Javoscript\MacroableModels\Facades\MacroableModels;
 trait HasStateMachines
 {
 
+    /**
+     * @return void
+     */
     public static function bootHasStateMachines(): void
     {
         $model = new static();
@@ -115,11 +119,48 @@ trait HasStateMachines
         });
     }
 
+    /**
+     * Apply the enum casts for all statemachines
+     *
+     * @return void
+     */
     public function initializeHasStateMachines(): void
     {
         $this->mergeCasts($this->stateMachines);
     }
 
+    /**
+     * @return void
+     */
+    public function initStateMachines(): void
+    {
+        collect($this->stateMachines)
+          ->each(function ($statesClass, $field) {
+              $stateMachine = new StateMachine($field, $this, $statesClass);
+
+              $this->{$field} = $this->{$field} ?? $stateMachine->defaultState();
+          });
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+     */
+    public function stateHistory(): MorphMany
+    {
+        return $this->morphMany(StateHistory::class, 'model');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+     */
+    public function pendingTransitions(): MorphMany
+    {
+        return $this->morphMany(PendingTransition::class, 'model');
+    }
+
+    /**
+     * @return array
+     */
     public function getChangedAttributes(): array
     {
         return collect($this->getDirty())
@@ -134,33 +175,23 @@ trait HasStateMachines
           ->toArray();
     }
 
-    public function initStateMachines(): void
-    {
-        collect($this->stateMachines)
-          ->each(function ($statesClass, $field) {
-              $stateMachine = new StateMachine($field, $this, $statesClass);
-
-              $this->{$field} = $this->{$field} ?? $stateMachine->defaultState();
-          });
-    }
-
-    public function stateHistory(): MorphMany
-    {
-        return $this->morphMany(StateHistory::class, 'model');
-    }
-
-    public function pendingTransitions(): MorphMany
-    {
-        return $this->morphMany(PendingTransition::class, 'model');
-    }
-
+    /**
+     * @param  string  $field
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States|null  $from
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $to
+     * @param  array  $customProperties
+     * @param  null  $responsible
+     * @param  array  $changedAttributes
+     *
+     * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|bool
+     */
     public function recordState(
-      $field,
-      $from,
-      $to,
-      $customProperties = [],
+      string $field,
+      ?States $from,
+      States $to,
+      array $customProperties = [],
       $responsible = null,
-      $changedAttributes = []
+      array $changedAttributes = []
     ): StateHistory|bool {
         $stateHistory = StateHistory::make([
           'field' => $field,
@@ -178,13 +209,23 @@ trait HasStateMachines
         return $this->stateHistory()->save($stateHistory);
     }
 
+    /**
+     * @param  string  $field
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States|null  $from
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $to
+     * @param  \Illuminate\Support\Carbon  $when
+     * @param  array  $customProperties
+     * @param  mixed  $responsible
+     *
+     * @return \byteit\LaravelExtendedStateMachines\Models\PendingTransition|bool
+     */
     public function recordPendingTransition(
-      $field,
-      $from,
-      $to,
-      $when,
-      $customProperties = [],
-      $responsible = null
+      string $field,
+      ?States $from,
+      States $to,
+      Carbon $when,
+      array $customProperties = [],
+      mixed $responsible = null
     ): PendingTransition|bool {
         /** @var PendingTransition $pendingTransition */
         $pendingTransition = PendingTransition::make([

@@ -198,11 +198,11 @@ class State
     }
 
     /**
-     * @param $key
+     * @param string $key
      *
      * @return mixed
      */
-    public function getCustomProperty($key): mixed
+    public function getCustomProperty(string $key): mixed
     {
         return optional($this->latest())->getCustomProperty($key);
     }

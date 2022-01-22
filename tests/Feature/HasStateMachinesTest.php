@@ -409,24 +409,6 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function should_not_record_pending_transition_for_same_state()
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-        //Act
-        $pendingTransition = $salesOrder->status()->postponeTransitionTo(
-          StatusStates::Pending,
-          Carbon::tomorrow()->startOfDay()
-        );
-
-        //Assert
-        $this->assertNull($pendingTransition);
-    }
-
-    /** @test */
     public function should_cancel_all_pending_transitions_when_transitioning_to_next_state(
     )
     {

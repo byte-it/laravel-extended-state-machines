@@ -14,7 +14,7 @@ enum StatusWithBeforeTransitionHookStates: string implements States
     case Approved =  'approved';
     case Processed = 'processed';
 
-    public function transition(): array
+    public function transitions(): array
     {
         return match($this){
             self::Pending => [self::Approved],

@@ -4,11 +4,13 @@ namespace byteit\LaravelExtendedStateMachines\Tests\Unit;
 
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 
 class StateHistoryTest extends TestCase
 {
+
     use RefreshDatabase;
     use WithFaker;
 
@@ -19,9 +21,12 @@ class StateHistoryTest extends TestCase
         $comments = $this->faker->sentence;
 
         $stateHistory = factory(StateHistory::class)->create([
-            'custom_properties' => [
-                'comments' => $comments,
-            ]
+          'from' => StatusStates::Pending,
+          'to' => StatusStates::Processed,
+          'states' => StatusStates::class,
+          'custom_properties' => [
+            'comments' => $comments,
+          ],
         ]);
 
         //Act
@@ -36,13 +41,16 @@ class StateHistoryTest extends TestCase
     {
         //Arrange
         $customProperties = [
-            'amount' => $this->faker->numberBetween(1, 100),
-            'comments' => $this->faker->sentence,
-            'approved_by' => $this->faker->randomDigitNotNull,
+          'amount' => $this->faker->numberBetween(1, 100),
+          'comments' => $this->faker->sentence,
+          'approved_by' => $this->faker->randomDigitNotNull,
         ];
 
         $stateHistory = factory(StateHistory::class)->create([
-            'custom_properties' => $customProperties
+          'from' => StatusStates::Pending,
+          'to' => StatusStates::Processed,
+          'states' => StatusStates::class,
+          'custom_properties' => $customProperties,
         ]);
 
         //Act
@@ -51,4 +59,5 @@ class StateHistoryTest extends TestCase
         //Assert
         $this->assertEquals($customProperties, $result);
     }
+
 }
