@@ -131,6 +131,7 @@ trait HasStateMachines
 
     /**
      * @return void
+     * @throws \ReflectionException
      */
     public function initStateMachines(): void
     {

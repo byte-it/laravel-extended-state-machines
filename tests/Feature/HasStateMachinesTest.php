@@ -14,7 +14,6 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Validation\ValidationException;
-use Queue;
 use Throwable;
 
 class HasStateMachinesTest extends TestCase

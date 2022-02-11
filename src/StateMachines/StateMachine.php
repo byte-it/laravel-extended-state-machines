@@ -9,6 +9,7 @@ use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\After;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
@@ -22,17 +23,21 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Event;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionEnum;
 use ReflectionException;
 use ReflectionMethod;
+use ReflectionNamedType;
 
 /**
  * @todo merge with customizations from kasching
  */
 class StateMachine
 {
+
+    public static array $booted = [];
 
     /**
      * @var string The field on the model
@@ -54,7 +59,7 @@ class StateMachine
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @param  string  $states  The States enum class
      *
-     * @throws \ReflectionException
+     * @throws \ReflectionException|\Illuminate\Contracts\Container\BindingResolutionException
      */
     public function __construct(string $field, Model $model, string $states)
     {
@@ -64,6 +69,17 @@ class StateMachine
 
         $this->states = $states;
 
+
+        if ( ! isset(self::$booted[$states])) {
+            self::boot($states);
+        }
+    }
+
+    /**
+     * @throws \ReflectionException|\Illuminate\Contracts\Container\BindingResolutionException
+     */
+    public static function boot(string $states): void
+    {
         $reflection = new ReflectionEnum($states);
 
         /** @var HasActions $actions */
@@ -71,24 +87,87 @@ class StateMachine
           ?->newInstance();
 
         if ($actions) {
+            /**
+             * Collect all registered actions, then scan all methods for the
+             * `Before` and `After` attributes and instantiate them.
+             * The result is a `Collection` keyed by the class containing arrays
+             * in the format `methodName` => [...AttributeInstances]
+             */
             collect($actions->actions)
-              ->each(function (string $class) {
+              ->each(function (string $class) use ($states) {
                   $reflection = new ReflectionClass($class);
 
                   collect($reflection->getMethods())
                     ->mapWithKeys(fn(ReflectionMethod $method) => [
                       $method->name => array_merge(
                         $method->getAttributes(Before::class),
-                        $method->getAttributes(Before::class)
+                        $method->getAttributes(After::class)
                       ),
                     ])
                     ->filter(fn(array $attributes) => count($attributes) > 0)
                     ->map(fn(array $attributes) => Arr::first($attributes)
-                      ->newInstance());
+                      ->newInstance())
+                    /**
+                     * Now we need to register event listeners for all aggregated handlers.
+                     * In the first step, generate the event name, respecting eventual wildcards.
+                     */
+                    ->each(function (After|Before $attribute, string $method) use (
+                      $states,
+                      $class,
+                      $reflection,
+                    ) {
 
+                        /*
+                         * First try to get the model class from the method parameters.
+                         * If it has none
+                         */
+                        $methodReflection = $reflection->getMethod($method);
+                        $parameters = Arr::first($methodReflection->getParameters());
+                        $type = $parameters->getType();
+
+                        $model = '*';
+
+                        if($type !== null){
+                            if($type instanceof ReflectionNamedType){
+                                if(!$type->isBuiltin() && !($type->getName() === Model::class)){
+                                    $model = $type->getName();
+                                }
+                            }
+                            else{
+                                throw new \InvalidArgumentException("Type unions or intersections aren't allowed.");
+                            }
+                        }
+
+                        $eventName = collect([
+                          $states,
+                          $model,
+                          $attribute->from->value ?? '*',
+                          $attribute->to->value ?? '*',
+                          match ($attribute::class) {
+                              After::class => 'after',
+                              Before::class => 'before'
+                          },
+                        ])->join('.');
+
+                        Event::listen($eventName,
+                          static function ($eventName, array $data) use (
+                            $class,
+                            $method
+                          ) {
+                              /** @var TransitionStarted|TransitionCompleted $event */
+                              $event = Arr::first($data);
+                              return app()
+                                ->make($class)
+                                ->{$method}($event->transition->model, $event);
+                          });
+                    });
               });
+
+
+
         }
 
+        self::$booted[$states] = true;
     }
 
     /**
@@ -225,8 +304,14 @@ class StateMachine
 
         $reflection = new ReflectionEnum($this->states);
 
-        $transition = new Transition($this, $from, $to, $this->model,
-          $customProperties, $responsible);
+        $transition = new Transition(
+          $this,
+          $from,
+          $to,
+          $this->model,
+          $customProperties,
+          $responsible
+        );
 
 
         $guards = collect($reflection->getAttributes(HasGuards::class))
@@ -240,8 +325,11 @@ class StateMachine
               $guard->guard($transition);
           });
 
+        $eventName = collect([
+          $to::class, $this->model::class, $from->value, $to->value, 'before',
+        ])->join('.');
 
-        TransitionStarted::dispatch($transition);
+        event($eventName, new TransitionStarted($transition));
 
         $field = $this->field;
 
@@ -264,7 +352,11 @@ class StateMachine
             );
         }
 
-        TransitionCompleted::dispatch($transition);
+        $eventName = collect([
+          $to::class, $this->model::class, $from->value, $to->value, 'after',
+        ])->join('.');
+
+        event($eventName, new TransitionCompleted($transition));
 
         // @todo allow keeping
         $this->cancelAllPendingTransitions();

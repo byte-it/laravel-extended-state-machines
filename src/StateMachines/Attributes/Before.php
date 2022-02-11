@@ -12,7 +12,6 @@ class Before
 {
 
     public function __construct(
-      public readonly string $states,
       public readonly ?States $from = null,
       public readonly ?States $to = null,
     ) {
@@ -20,15 +19,10 @@ class Before
             throw new InvalidArgumentException('Either $from or $to must be set');
         }
 
-        if ($this->to && $this->to::class !== $this->states) {
-            throw new TypeError(sprintf('$to needs to of type %s instead %s was given',
-              $this->states, $this->to::class));
+        if ($this->to && $this->from && $this->to::class !== $this->from::class) {
+            throw new TypeError(sprintf('%s: $to %s and $form %s must be of same type', $this->to::class, $this->to::class, $this->from::class));
         }
 
-        if ($this->from && $this->from::class !== $this->states) {
-            throw new TypeError(sprintf('$from needs to of type %s instead %s was given',
-              $this->states, $this->to::class));
-        }
     }
 
 }

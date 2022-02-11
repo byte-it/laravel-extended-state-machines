@@ -9,13 +9,13 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\Guards\ApproveGuard;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ApproveAction;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\UpdateOrderTotal;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ProcessAction;
 
 #[
   DefaultState(StatusStates::Pending),
   RecordHistory,
   HasGuards([ApproveGuard::class]),
-  HasActions([ApproveAction::class])
 ]
 enum StatusStates: string implements States
 {
