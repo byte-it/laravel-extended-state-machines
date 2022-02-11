@@ -3,10 +3,12 @@
 namespace byteit\LaravelExtendedStateMachines\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
+
 /**
  * Class StateHistory
  *
@@ -22,7 +24,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
  * @property array $changed_attributes
 
  * @todo Add enum field
- * @todo Add accessor/mutator form from/to
+ * @todo Rename to transition
  */
 class StateHistory extends Model
 {
@@ -68,7 +70,6 @@ class StateHistory extends Model
 
     /**
      * @return array
-     * @todo Proper Parameter types
      */
     public function allCustomProperties(): array
     {
@@ -77,7 +78,6 @@ class StateHistory extends Model
 
     /**
      * @return array
-     * @todo Proper Parameter types
      */
     public function changedAttributesNames(): array
     {
@@ -107,89 +107,84 @@ class StateHistory extends Model
     }
 
     /**
-     * @param $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @param  string  $field
      *
      * @return void
-     * @todo Proper Parameter types
      */
-    public function scopeForField($query, string $field): void
+    public function scopeForField(Builder $query, string $field): void
     {
         $query->where('field', $field);
     }
 
     /**
-     * @param $query
-     * @param States $from
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  States  $from
      *
      * @return void
-     * @todo Proper Parameter types
      */
-    public function scopeFrom($query, States $from): void
+    public function scopeFrom(Builder $query, States $from): void
     {
         $query->where('from', $from->value);
     }
 
     /**
-     * @param $query
-     * @param States $from
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  States  $from
      *
      * @return void
      * @todo Proper Parameter types
      */
-    public function scopeTransitionedFrom($query, States $from): void
+    public function scopeTransitionedFrom(Builder $query, States $from): void
     {
         $query->from($from);
     }
 
     /**
-     * @param $query
-     * @param States $to
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  States  $to
      *
      * @return void
-     * @todo Proper Parameter types
      */
-    public function scopeTo($query, States $to): void
+    public function scopeTo(Builder $query, States $to): void
     {
         $query->where('to', $to->value);
     }
 
     /**
-     * @param $query
-     * @param States $to
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  States  $to
      *
      * @return void
-     * @todo Proper Parameter types
      */
-    public function scopeTransitionedTo($query, States $to): void
+    public function scopeTransitionedTo(Builder $query, States $to): void
     {
         $query->to($to);
     }
 
     /**
-     * @param $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @param  States  $from
      * @param  States  $to
      *
      * @return void
-     * @todo Proper Parameter types
      */
-    public function scopeWithTransition($query, States $from, States $to): void
+    public function scopeWithTransition(Builder $query, States $from, States $to): void
     {
         $query->from($from)->to($to);
     }
 
     /**
-     * @param $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @param $key
      * @param $operator
-     * @param $value
+     * @param  null  $value
      *
      * @return void
      * @todo Proper Parameter types
      */
     public function scopeWithCustomProperty(
-      $query,
+      Builder $query,
       $key,
       $operator,
       $value = null
@@ -198,13 +193,13 @@ class StateHistory extends Model
     }
 
     /**
-     * @param $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @param $responsible
      *
      * @return mixed
      * @todo Proper Parameter types
      */
-    public function scopeWithResponsible($query, $responsible)
+    public function scopeWithResponsible(Builder $query, $responsible)
     {
         if ($responsible instanceof Model) {
             return $query
