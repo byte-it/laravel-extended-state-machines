@@ -3,7 +3,7 @@
 namespace byteit\LaravelExtendedStateMachines\Traits;
 
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\StateMachines\State;
 use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
@@ -148,7 +148,7 @@ trait HasStateMachines
      */
     public function stateHistory(): MorphMany
     {
-        return $this->morphMany(StateHistory::class, 'model');
+        return $this->morphMany(Transition::class, 'model');
     }
 
     /**
@@ -184,7 +184,7 @@ trait HasStateMachines
      * @param  null  $responsible
      * @param  array  $changedAttributes
      *
-     * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|bool
+     * @return \byteit\LaravelExtendedStateMachines\Models\Transition|bool
      */
     public function recordState(
       string $field,
@@ -193,8 +193,8 @@ trait HasStateMachines
       array $customProperties = [],
       $responsible = null,
       array $changedAttributes = []
-    ): StateHistory|bool {
-        $stateHistory = StateHistory::make([
+    ): Transition|bool {
+        $stateHistory = Transition::make([
           'field' => $field,
           'from' => $from,
           'to' => $to,

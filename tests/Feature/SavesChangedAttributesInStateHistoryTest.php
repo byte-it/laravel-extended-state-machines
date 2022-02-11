@@ -2,7 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
@@ -34,7 +34,7 @@ class SavesChangedAttributesInStateHistoryTest extends TestCase
         //Assert
         $salesOrder->refresh();
 
-        /** @var StateHistory $lastStateTransition */
+        /** @var Transition $lastStateTransition */
         $lastStateTransition = $salesOrder->status()->history()->get()->last();
 
         $this->assertContains('notes', $lastStateTransition->changedAttributesNames());
@@ -63,7 +63,7 @@ class SavesChangedAttributesInStateHistoryTest extends TestCase
         //Assert
         $salesOrder->refresh();
 
-        /** @var StateHistory $lastStateTransition */
+        /** @var Transition $lastStateTransition */
         $lastStateTransition = $salesOrder->status()->history()->first();
 
         $this->assertContains('notes', $lastStateTransition->changedAttributesNames());

@@ -2,7 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\Unit;
 
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,7 +20,7 @@ class StateHistoryTest extends TestCase
         //Arrange
         $comments = $this->faker->sentence;
 
-        $stateHistory = factory(StateHistory::class)->create([
+        $stateHistory = factory(Transition::class)->create([
           'from' => StatusStates::Pending,
           'to' => StatusStates::Processed,
           'states' => StatusStates::class,
@@ -46,7 +46,7 @@ class StateHistoryTest extends TestCase
           'approved_by' => $this->faker->randomDigitNotNull,
         ];
 
-        $stateHistory = factory(StateHistory::class)->create([
+        $stateHistory = factory(Transition::class)->create([
           'from' => StatusStates::Pending,
           'to' => StatusStates::Processed,
           'states' => StatusStates::class,

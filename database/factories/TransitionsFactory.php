@@ -1,9 +1,9 @@
 <?php
 
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use Faker\Generator as Faker;
 
-$factory->define(StateHistory::class, function (Faker $faker) {
+$factory->define(Transition::class, function (Faker $faker) {
     return [
         'field' => $faker->word,
         'from' => $faker->word,

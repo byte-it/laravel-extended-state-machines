@@ -9,7 +9,7 @@ use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition as TransitionModel;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\After;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
@@ -18,6 +18,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
+use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -51,7 +52,7 @@ class StateMachine
     public string|States $states;
 
     /**
-     * @var \Illuminate\Database\Eloquent\Model The model to act on
+     * @var \Illuminate\Database\Eloquent\Model&HasStateMachines The model to act on
      */
     public Model $model;
 
@@ -232,11 +233,11 @@ class StateMachine
     /**
      * @param  States  $state
      *
-     * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|null
+     * @return TransitionModel|null
      */
     public function snapshotWhen(
       States $state
-    ): ?StateHistory {
+    ): ?TransitionModel {
         return $this->history()->to($state)->latest('id')->first();
     }
 

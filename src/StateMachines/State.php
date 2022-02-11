@@ -5,7 +5,7 @@ namespace byteit\LaravelExtendedStateMachines\StateMachines;
 
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
-use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -111,9 +111,9 @@ class State
     /**
      * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $state
      *
-     * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|null
+     * @return \byteit\LaravelExtendedStateMachines\Models\Transition|null
      */
-    public function snapshotWhen(States $state): ?StateHistory
+    public function snapshotWhen(States $state): ?Transition
     {
         $this->assertStateClass($state);
         return $this->stateMachine->snapshotWhen($state);
@@ -200,9 +200,9 @@ class State
     }
 
     /**
-     * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|null
+     * @return \byteit\LaravelExtendedStateMachines\Models\Transition|null
      */
-    public function latest() : ?StateHistory
+    public function latest() : ?Transition
     {
         return $this->snapshotWhen($this->state);
     }

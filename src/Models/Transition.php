@@ -24,9 +24,8 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
  * @property array $changed_attributes
 
  * @todo Add enum field
- * @todo Rename to transition
  */
-class StateHistory extends Model
+class Transition extends Model
 {
 
     protected $guarded = [];
@@ -194,12 +193,11 @@ class StateHistory extends Model
 
     /**
      * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param $responsible
+     * @param  \Illuminate\Database\Eloquent\Model|string|int  $responsible
      *
      * @return mixed
-     * @todo Proper Parameter types
      */
-    public function scopeWithResponsible(Builder $query, $responsible)
+    public function scopeWithResponsible(Builder $query, Model|string|int $responsible): mixed
     {
         if ($responsible instanceof Model) {
             return $query
