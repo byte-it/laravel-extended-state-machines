@@ -30,7 +30,7 @@ class PendingTransitionExecutorTest extends TestCase
             StatusStates::Approved,
             Carbon::now(),
             ['comments' => 'All good!'],
-            $responsible = $salesManager
+            $salesManager
         );
 
         $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));

@@ -2,9 +2,9 @@
 
 namespace byteit\LaravelExtendedStateMachines\Exceptions;
 
-use Illuminate\Validation\ValidationException;
+use Exception;
 
-class TransitionGuardException extends ValidationException
+class TransitionGuardException extends Exception
 {
 
 }

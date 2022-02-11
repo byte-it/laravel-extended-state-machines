@@ -2,6 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
+use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
@@ -10,6 +11,7 @@ use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStates;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusWithBeforeTransitionHookStates;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -45,11 +47,16 @@ class HasStateMachinesTest extends TestCase
         $salesOrder = factory(SalesOrder::class)->create();
 
         //Arrange
-        $statusStateMachine = new StateMachine('status', $salesOrder,
-          StatusStates::class);
+        $statusStateMachine = new StateMachine(
+          'status',
+          $salesOrder,
+          StatusStates::class
+        );
 
-        $fulfillmentStateMachine = new StateMachine('fulfillment', $salesOrder,
-          FulfillmentStates::class);
+        $fulfillmentStateMachine = new StateMachine(
+          'fulfillment', $salesOrder,
+          FulfillmentStates::class
+        ,);
 
         //Act
 
@@ -89,7 +96,8 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function should_not_do_anything_when_transitioning_to_same_state(): void
+    public function should_not_do_anything_when_transitioning_to_same_state(
+    ): void
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
@@ -110,7 +118,8 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function should_register_responsible_for_transition_when_specified(): void
+    public function should_register_responsible_for_transition_when_specified(
+    ): void
     {
         //Arrange
         $salesManager = factory(SalesManager::class)->create();
@@ -174,7 +183,8 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function should_throw_exception_for_invalid_state_on_transition(): void
+    public function should_throw_exception_for_invalid_state_on_transition(
+    ): void
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create([
@@ -183,18 +193,14 @@ class HasStateMachinesTest extends TestCase
 
         $this->assertFalse($salesOrder->status()->canBe(StatusStates::Pending));
 
-        //Act
-        try {
-            $salesOrder->status()->transitionTo(StatusStates::Pending);
-            $this->fail('Should have thrown exception');
-        } catch (Throwable $throwable) {
-            //Assert
-            $this->assertTrue($throwable instanceof TransitionNotAllowedException);
-        }
+        $this->expectException(TransitionNotAllowedException::class);
+        $salesOrder->status()->transitionTo(StatusStates::Pending);
+
     }
 
     /** @test */
-    public function should_throw_exception_for_custom_validator_on_transition(): void
+    public function should_throw_exception_for_custom_validator_on_transition(
+    ): void
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
@@ -203,20 +209,16 @@ class HasStateMachinesTest extends TestCase
 
 
         $this->assertTrue($salesOrder->fulfillment()
-          ->canBe(StatusStates::Pending));
+          ->canBe(FulfillmentStates::Partial));
 
-        //Act
-        try {
-            $salesOrder->fulfillment()->transitionTo(StatusStates::Pending);
-            $this->fail('Should have thrown exception');
-        } catch (Throwable $throwable) {
-            // Assert
-            $this->assertTrue($throwable instanceof ValidationException);
-        }
+        $this->expectException(TransitionGuardException::class);
+        $salesOrder->fulfillment()->transitionTo(FulfillmentStates::Partial);
+
     }
 
     /** @test */
-    public function should_record_history_when_transitioning_to_next_state(): void
+    public function should_record_history_when_transitioning_to_next_state(
+    ): void
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
@@ -242,8 +244,10 @@ class HasStateMachinesTest extends TestCase
         //Arrange
         $dummySalesOrder = new SalesOrder();
 
-        $stateMachine = new StateMachine('status', $dummySalesOrder,
-          StatusStates::class);
+        $stateMachine = new StateMachine(
+          'status', $dummySalesOrder,
+          StatusStates::class
+        );
 
         $this->assertTrue($stateMachine->recordHistory());
 
@@ -389,9 +393,9 @@ class HasStateMachinesTest extends TestCase
         $this->assertEquals('status', $pendingTransition->field);
 
         $this->assertEquals(StatusStates::Pending,
-         $pendingTransition->from);
+          $pendingTransition->from);
         $this->assertEquals(StatusStates::Approved,
-         $pendingTransition->to);
+          $pendingTransition->to);
 
         $this->assertEquals(Carbon::tomorrow()->startOfDay(),
           $pendingTransition->transition_at);
@@ -420,7 +424,7 @@ class HasStateMachinesTest extends TestCase
           'model_type' => SalesOrder::class,
           'states' => FulfillmentStates::class,
           'from' => FulfillmentStates::Pending,
-            'to' => FulfillmentStates::Partial,
+          'to' => FulfillmentStates::Partial,
         ]);
 
         factory(PendingTransition::class)->times(5)->create([
@@ -452,15 +456,11 @@ class HasStateMachinesTest extends TestCase
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
 
-        //Act
-        try {
-            $salesOrder->status()
-              ->postponeTransitionTo('invalid', Carbon::tomorrow());
-            $this->fail('Should have thrown exception');
-        } catch (Throwable $exception) {
-            //Assert
-            $this->assertTrue($exception instanceof TransitionNotAllowedException);
-        }
+        $this->expectException(TransitionNotAllowedException::class);
+
+        $salesOrder->status()
+          ->postponeTransitionTo(StatusWithBeforeTransitionHookStates::Approved, Carbon::tomorrow());
+
     }
 
 }

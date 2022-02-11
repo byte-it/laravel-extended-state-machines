@@ -10,6 +10,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
+use TypeError;
 
 /**
  * Class State
@@ -59,6 +60,7 @@ class State
      */
     public function is(States $state): bool
     {
+        $this->assertStateClass($state);
         return $this->state === $state;
     }
 
@@ -69,6 +71,7 @@ class State
      */
     public function isNot(States $state): bool
     {
+        $this->assertStateClass($state);
         return !$this->is($state);
     }
 
@@ -79,6 +82,7 @@ class State
      */
     public function was(States $state): bool
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->was($state);
     }
 
@@ -89,6 +93,7 @@ class State
      */
     public function timesWas(States $state): int
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->timesWas($state);
     }
 
@@ -99,6 +104,7 @@ class State
      */
     public function whenWas(States $state): ?Carbon
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->whenWas($state);
     }
 
@@ -109,6 +115,7 @@ class State
      */
     public function snapshotWhen(States $state): ?StateHistory
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->snapshotWhen($state);
     }
 
@@ -119,6 +126,7 @@ class State
      */
     public function snapshotsWhen(States $state): Collection
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->snapshotsWhen($state);
     }
 
@@ -137,6 +145,7 @@ class State
      */
     public function canBe(States $state): bool
     {
+        $this->assertStateClass($state);
         return $this->stateMachine->canBe($from = $this->state, $to = $state);
     }
 
@@ -158,6 +167,7 @@ class State
 
     /**
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
+     * @throws \ReflectionException
      */
     public function transitionTo(States $to, $customProperties = [], $responsible = null): void
     {
@@ -221,5 +231,11 @@ class State
     public function allCustomProperties(): array
     {
         return optional($this->latest())->allCustomProperties() ?? [];
+    }
+
+    protected function assertStateClass(States $state): void{
+        if(!($state instanceof $this->state)){
+            throw new TypeError(sprintf('$state must be of type %s, instead %s  was given.', $this->state::class, $state::class));
+        }
     }
 }

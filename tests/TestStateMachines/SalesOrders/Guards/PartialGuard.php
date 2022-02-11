@@ -2,13 +2,13 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\Guards;
 
-use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
 use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
-#[Guards(to: StatusStates::Approved)]
-class ApproveGuard implements Guard
+class PartialGuard implements Guard
 {
 
     /**
@@ -16,7 +16,11 @@ class ApproveGuard implements Guard
      */
     public function guard(Transition $transition): bool
     {
-        return true;
+        return  Validator::make([
+                'status' => $transition->model->status->value,
+            ], [
+                'status' => Rule::in(StatusStates::Approved->value),
+            ])->validate();
     }
 
 }

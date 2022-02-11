@@ -10,9 +10,9 @@ interface Guard
     /**
      * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Transition  $transition
      *
-     * @return void
+     * @return bool
      *
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
      */
-    public function guard(Transition $transition): void;
+    public function guard(Transition $transition): bool;
 }

@@ -6,6 +6,7 @@ namespace byteit\LaravelExtendedStateMachines\StateMachines;
 
 use byteit\LaravelExtendedStateMachines\Events\TransitionCompleted;
 use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
+use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
@@ -111,7 +112,10 @@ class StateMachine
                      * Now we need to register event listeners for all aggregated handlers.
                      * In the first step, generate the event name, respecting eventual wildcards.
                      */
-                    ->each(function (After|Before $attribute, string $method) use (
+                    ->each(function (
+                      After|Before $attribute,
+                      string $method
+                    ) use (
                       $states,
                       $class,
                       $reflection,
@@ -127,13 +131,12 @@ class StateMachine
 
                         $model = '*';
 
-                        if($type !== null){
-                            if($type instanceof ReflectionNamedType){
-                                if(!$type->isBuiltin() && !($type->getName() === Model::class)){
+                        if ($type !== null) {
+                            if ($type instanceof ReflectionNamedType) {
+                                if ( ! $type->isBuiltin() && ! ($type->getName() === Model::class)) {
                                     $model = $type->getName();
                                 }
-                            }
-                            else{
+                            } else {
                                 throw new \InvalidArgumentException("Type unions or intersections aren't allowed.");
                             }
                         }
@@ -162,7 +165,6 @@ class StateMachine
                           });
                     });
               });
-
 
 
         }
@@ -320,10 +322,19 @@ class StateMachine
           ->flatten()
           ->map(fn(string $class) => App::make($class));
 
-        collect($guards)
-          ->each(function (Guard $guard) use ($transition) {
-              $guard->guard($transition);
-          });
+        $guardsResult = collect($guards)
+          ->map(function (Guard $guard) use ($transition) {
+              try {
+                  return $guard->guard($transition);
+              } catch (\Exception $exception) {
+                  return $exception;
+              }
+          })
+          ->reject(fn(mixed $result) => $result === true);
+
+        if($guardsResult->isNotEmpty()){
+            throw new TransitionGuardException();
+        }
 
         $eventName = collect([
           $to::class, $this->model::class, $from->value, $to->value, 'before',
