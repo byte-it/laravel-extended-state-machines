@@ -9,7 +9,9 @@ use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Models\StateHistory;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
@@ -24,6 +26,7 @@ use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionEnum;
 use ReflectionException;
+use ReflectionMethod;
 
 /**
  * @todo merge with customizations from kasching
@@ -50,6 +53,8 @@ class StateMachine
      * @param  string  $field  The model field
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @param  string  $states  The States enum class
+     *
+     * @throws \ReflectionException
      */
     public function __construct(string $field, Model $model, string $states)
     {
@@ -58,6 +63,32 @@ class StateMachine
         $this->model = $model;
 
         $this->states = $states;
+
+        $reflection = new ReflectionEnum($states);
+
+        /** @var HasActions $actions */
+        $actions = Arr::first($reflection->getAttributes(HasActions::class))
+          ?->newInstance();
+
+        if ($actions) {
+            collect($actions->actions)
+              ->each(function (string $class) {
+                  $reflection = new ReflectionClass($class);
+
+                  collect($reflection->getMethods())
+                    ->mapWithKeys(fn(ReflectionMethod $method) => [
+                      $method->name => array_merge(
+                        $method->getAttributes(Before::class),
+                        $method->getAttributes(Before::class)
+                      ),
+                    ])
+                    ->filter(fn(array $attributes) => count($attributes) > 0)
+                    ->map(fn(array $attributes) => Arr::first($attributes)
+                      ->newInstance());
+
+              });
+        }
+
     }
 
     /**
@@ -83,8 +114,9 @@ class StateMachine
      *
      * @return bool
      */
-    public function was(States $state): bool
-    {
+    public function was(
+      States $state
+    ): bool {
         return $this->history()->to($state)->exists();
     }
 
@@ -93,8 +125,9 @@ class StateMachine
      *
      * @return mixed
      */
-    public function timesWas(States $state): int
-    {
+    public function timesWas(
+      States $state
+    ): int {
         return $this->history()->to($state)->count();
     }
 
@@ -103,8 +136,9 @@ class StateMachine
      *
      * @return \Carbon\Carbon|null
      */
-    public function whenWas(States $state): ?Carbon
-    {
+    public function whenWas(
+      States $state
+    ): ?Carbon {
         $stateHistory = $this->snapshotWhen($state);
 
         if ($stateHistory === null) {
@@ -119,8 +153,9 @@ class StateMachine
      *
      * @return \byteit\LaravelExtendedStateMachines\Models\StateHistory|null
      */
-    public function snapshotWhen(States $state): ?StateHistory
-    {
+    public function snapshotWhen(
+      States $state
+    ): ?StateHistory {
         return $this->history()->to($state)->latest('id')->first();
     }
 
@@ -129,8 +164,9 @@ class StateMachine
      *
      * @return \Illuminate\Support\Collection
      */
-    public function snapshotsWhen(States $state): Collection
-    {
+    public function snapshotsWhen(
+      States $state
+    ): Collection {
         return $this->history()->to($state)->get();
     }
 
@@ -140,8 +176,10 @@ class StateMachine
      *
      * @return bool
      */
-    public function canBe(States $from, States $to): bool
-    {
+    public function canBe(
+      States $from,
+      States $to
+    ): bool {
         return in_array($to, $from->transitions(), true);
     }
 
@@ -201,6 +239,7 @@ class StateMachine
           ->each(function (Guard $guard) use ($transition) {
               $guard->guard($transition);
           });
+
 
         TransitionStarted::dispatch($transition);
 
