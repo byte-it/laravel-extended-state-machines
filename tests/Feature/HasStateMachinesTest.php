@@ -199,7 +199,7 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function should_throw_exception_for_custom_validator_on_transition(
+    public function should_throw_exception_for_class_guard_on_transition(
     ): void
     {
         //Arrange
@@ -213,6 +213,20 @@ class HasStateMachinesTest extends TestCase
 
         $this->expectException(TransitionGuardException::class);
         $salesOrder->fulfillment()->transitionTo(FulfillmentStates::Partial);
+
+    }
+
+    public function should_throw_exception_for_inline_guard_on_transition(
+    ): void
+    {
+        //Arrange
+        $salesOrder = factory(SalesOrder::class)->create();
+
+        $salesOrder->status()->transitionTo(StatusStates::Approved);
+
+
+        $this->expectException(TransitionGuardException::class);
+        $salesOrder->status()->transitionTo(StatusStates::Processed);
 
     }
 

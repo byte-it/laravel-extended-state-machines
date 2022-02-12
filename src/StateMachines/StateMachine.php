@@ -13,6 +13,7 @@ use byteit\LaravelExtendedStateMachines\Models\Transition as TransitionModel;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\After;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
@@ -20,6 +21,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
@@ -317,16 +319,28 @@ class StateMachine
         );
 
 
-        $guards = collect($reflection->getAttributes(HasGuards::class))
+        $classGuards = collect($reflection->getAttributes(HasGuards::class))
           ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
           ->map(fn(HasGuards $instance) => $instance->guards)
           ->flatten()
-          ->map(fn(string $class) => App::make($class));
+          ->map(fn(string $class) => static function(Transition $transition) use ($class){
+              return App::make($class)->guard($transition);
+          });
 
-        $guardsResult = collect($guards)
-          ->map(function (Guard $guard) use ($transition) {
+        $inlineGuards = collect($reflection->getMethods())
+          ->mapWithKeys(fn(ReflectionMethod $method) => [$method->name => $method])
+          ->map(fn(ReflectionMethod $method) => Arr::first($method->getAttributes(Guards::class))?->newInstance())
+          ->reject(null)
+          ->filter(fn(Guards $guard) => $guard->from === null || $guard->from === $from)
+          ->filter(fn(Guards $guard) => ($guard->from !== null && $guard->to === null) || $guard->to === $to)
+          ->map(fn(Guards $guards, string $method) => static function(Transition $transition, StateMachine $machine) use ($method){
+              return $machine->states::{$method}($transition);
+          });
+
+        $guardsResult = $classGuards->merge($inlineGuards)
+          ->map(function (Closure $guard) use ($transition) {
               try {
-                  return $guard->guard($transition);
+                  return $guard($transition, $this);
               } catch (\Exception $exception) {
                   return $exception;
               }
@@ -334,7 +348,7 @@ class StateMachine
           ->reject(fn(mixed $result) => $result === true);
 
         if($guardsResult->isNotEmpty()){
-            throw new TransitionGuardException();
+            throw new TransitionGuardException("A guard canceled the transition from {$from->value} to {$to->value}");
         }
 
         $eventName = collect([

@@ -4,13 +4,12 @@
 namespace byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders;
 
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
-use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
+use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\Guards\ApproveGuard;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\UpdateOrderTotal;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ProcessAction;
 
 #[
   DefaultState(StatusStates::Pending),
@@ -33,6 +32,12 @@ enum StatusStates: string implements States
             self::Approved => [self::Processed],
             default => []
         };
+    }
+
+    #[Guards(from: self::Approved, to: self::Processed)]
+    public static function guardProcessing(Transition $transition): bool
+    {
+        return $transition->model->fulfillment === FulfillmentStates::Complete;
     }
 
 }
