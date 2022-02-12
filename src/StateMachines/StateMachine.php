@@ -17,17 +17,18 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
-use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\Guard;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Carbon\Carbon;
 use Closure;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Event;
+use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionEnum;
@@ -54,7 +55,8 @@ class StateMachine
     public string|States $states;
 
     /**
-     * @var \Illuminate\Database\Eloquent\Model&HasStateMachines The model to act on
+     * @var \Illuminate\Database\Eloquent\Model&HasStateMachines The model to
+     *   act on
      */
     public Model $model;
 
@@ -140,20 +142,17 @@ class StateMachine
                                     $model = $type->getName();
                                 }
                             } else {
-                                throw new \InvalidArgumentException("Type unions or intersections aren't allowed.");
+                                throw new InvalidArgumentException("Type unions or intersections aren't allowed.");
                             }
                         }
 
-                        $eventName = collect([
-                          $states,
+                        $eventName = self::event(
+                          $attribute->from,
+                          $attribute->to,
                           $model,
-                          $attribute->from->value ?? '*',
-                          $attribute->to->value ?? '*',
-                          match ($attribute::class) {
-                              After::class => 'after',
-                              Before::class => 'before'
-                          },
-                        ])->join('.');
+                          before: $attribute instanceof Before,
+                          after: $attribute instanceof After,
+                        );
 
                         Event::listen($eventName,
                           static function ($eventName, array $data) use (
@@ -319,43 +318,24 @@ class StateMachine
         );
 
 
-        $classGuards = collect($reflection->getAttributes(HasGuards::class))
-          ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
-          ->map(fn(HasGuards $instance) => $instance->guards)
-          ->flatten()
-          ->map(fn(string $class) => static function(Transition $transition) use ($class){
-              return App::make($class)->guard($transition);
-          });
-
-        $inlineGuards = collect($reflection->getMethods())
-          ->mapWithKeys(fn(ReflectionMethod $method) => [$method->name => $method])
-          ->map(fn(ReflectionMethod $method) => Arr::first($method->getAttributes(Guards::class))?->newInstance())
-          ->reject(null)
-          ->filter(fn(Guards $guard) => $guard->from === null || $guard->from === $from)
-          ->filter(fn(Guards $guard) => ($guard->from !== null && $guard->to === null) || $guard->to === $to)
-          ->map(fn(Guards $guards, string $method) => static function(Transition $transition, StateMachine $machine) use ($method){
-              return $machine->states::{$method}($transition);
-          });
-
-        $guardsResult = $classGuards->merge($inlineGuards)
+        $guardsResult = $this->resolveGuards($to, $from, $reflection)
           ->map(function (Closure $guard) use ($transition) {
               try {
                   return $guard($transition, $this);
-              } catch (\Exception $exception) {
+              } catch (Exception $exception) {
                   return $exception;
               }
           })
           ->reject(fn(mixed $result) => $result === true);
 
-        if($guardsResult->isNotEmpty()){
+        if ($guardsResult->isNotEmpty()) {
             throw new TransitionGuardException("A guard canceled the transition from {$from->value} to {$to->value}");
         }
 
-        $eventName = collect([
-          $to::class, $this->model::class, $from->value, $to->value, 'before',
-        ])->join('.');
-
-        event($eventName, new TransitionStarted($transition));
+        event(
+          self::event($from, $to, $this->model::class, before: true),
+          new TransitionStarted($transition)
+        );
 
         $field = $this->field;
 
@@ -378,11 +358,10 @@ class StateMachine
             );
         }
 
-        $eventName = collect([
-          $to::class, $this->model::class, $from->value, $to->value, 'after',
-        ])->join('.');
-
-        event($eventName, new TransitionCompleted($transition));
+        event(
+          self::event($from, $to, $this->model::class, after: true),
+          new TransitionCompleted($transition)
+        );
 
         // @todo allow keeping
         $this->cancelAllPendingTransitions();
@@ -473,6 +452,81 @@ class StateMachine
         }
         /** @var DefaultState[] $attributes */
         return count($attributes) === 1;
+    }
+
+    protected function resolveGuards(
+      States $to,
+      States $from,
+      ReflectionEnum $reflection
+    ): Collection {
+        $classGuards = collect($reflection->getAttributes(HasGuards::class))
+          ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
+          ->map(fn(HasGuards $instance) => $instance->guards)
+          ->flatten()
+          ->map(fn(string $class) => static function (Transition $transition
+          ) use ($class) {
+              return App::make($class)->guard($transition);
+          });
+
+        $inlineGuards = collect($reflection->getMethods())
+          ->mapWithKeys(fn(ReflectionMethod $method
+          ) => [$method->name => $method])
+          ->map(fn(ReflectionMethod $method
+          ) => Arr::first($method->getAttributes(Guards::class))
+            ?->newInstance())
+          ->reject(null)
+          ->filter(fn(Guards $guard
+          ) => $guard->from === null || $guard->from === $from)
+          ->filter(fn(Guards $guard
+          ) => ($guard->from !== null && $guard->to === null) || $guard->to === $to)
+          ->map(fn(Guards $guards, string $method) => static function (
+            Transition $transition,
+            StateMachine $machine
+          ) use ($method) {
+              return $machine->states::{$method}($transition);
+          });
+
+
+        return $classGuards->merge($inlineGuards);
+    }
+
+    /**
+     * Generates the event name, including wildcards
+     *
+     * @param  States|null  $from
+     * @param  States|null  $to
+     * @param  string|null  $model
+     * @param  bool  $before
+     * @param  bool  $after
+     *
+     * @return string
+     */
+    public static function event(
+      ?States $from = null,
+      ?States $to = null,
+      ?string $model = null,
+      bool $before = false,
+      bool $after = false
+    ): string {
+
+        $states = match (true) {
+            $from !== null => $from::class,
+            $to !== null => $to::class,
+            default => throw new InvalidArgumentException('At least one of $to or $form must be not null')
+        };
+
+        return collect([
+          $states,
+          $model ?? '*',
+          $attribute->from->value ?? '*',
+          $attribute->to->value ?? '*',
+          match (true) {
+              $before && $after => '*',
+              $before => 'before',
+              $after => 'after',
+              default => throw new InvalidArgumentException('At least oe of $before or $after must be true')
+          },
+        ])->join('.');
     }
 
 }
