@@ -1,10 +1,10 @@
 <?php
 
-use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use Carbon\Carbon;
 use Faker\Generator as Faker;
 
-$factory->define(PendingTransition::class, function (Faker $faker) {
+$factory->define(PostponedTransition::class, function (Faker $faker) {
     return [
         'field' => $faker->word,
         'from' => $faker->word,

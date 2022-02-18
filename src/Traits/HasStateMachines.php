@@ -2,7 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Traits;
 
-use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\StateMachines\State;
@@ -28,6 +28,8 @@ trait HasStateMachines
 
     /**
      * @return void
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     * @throws \ReflectionException
      */
     public static function bootHasStateMachines(): void
     {
@@ -154,9 +156,9 @@ trait HasStateMachines
     /**
      * @return \Illuminate\Database\Eloquent\Relations\MorphMany
      */
-    public function pendingTransitions(): MorphMany
+    public function postponedTransitions(): MorphMany
     {
-        return $this->morphMany(PendingTransition::class, 'model');
+        return $this->morphMany(PostponedTransition::class, 'model');
     }
 
     /**
@@ -218,18 +220,18 @@ trait HasStateMachines
      * @param  array  $customProperties
      * @param  mixed  $responsible
      *
-     * @return \byteit\LaravelExtendedStateMachines\Models\PendingTransition|bool
+     * @return \byteit\LaravelExtendedStateMachines\Models\PostponedTransition|bool
      */
-    public function recordPendingTransition(
+    public function recordPostponedTransition(
       string $field,
       ?States $from,
       States $to,
       Carbon $when,
       array $customProperties = [],
       mixed $responsible = null
-    ): PendingTransition|bool {
-        /** @var PendingTransition $pendingTransition */
-        $pendingTransition = PendingTransition::make([
+    ): PostponedTransition|bool {
+        /** @var PostponedTransition $postponedTransition */
+        $postponedTransition = PostponedTransition::make([
           'field' => $field,
           'from' => $from,
           'to' => $to,
@@ -239,11 +241,11 @@ trait HasStateMachines
         ]);
 
         if ($responsible !== null) {
-            $pendingTransition->responsible()->associate($responsible);
+            $postponedTransition->responsible()->associate($responsible);
         }
 
-        return $this->pendingTransitions()
-          ->save($pendingTransition);
+        return $this->postponedTransitions()
+          ->save($postponedTransition);
     }
 
 }

@@ -2,7 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionExecutor;
+use byteit\LaravelExtendedStateMachines\Jobs\PostponedTransitionExecutor;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
@@ -35,14 +35,14 @@ class PendingTransitionExecutorTest extends TestCase
 
         $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
         Queue::after(function (JobProcessed $event) {
             $this->assertFalse($event->job->hasFailed());
         });
 
         //Act
-        PendingTransitionExecutor::dispatch($pendingTransition);
+        PostponedTransitionExecutor::dispatch($pendingTransition);
 
         //Assert
         $salesOrder->refresh();
@@ -53,7 +53,7 @@ class PendingTransitionExecutorTest extends TestCase
 
         $this->assertEquals($salesManager->id, $salesOrder->status()->responsible()->id);
 
-        $this->assertFalse($salesOrder->status()->hasPendingTransitions());
+        $this->assertFalse($salesOrder->status()->hasPostponedTransitions());
     }
 
     /** @test */
@@ -68,15 +68,15 @@ class PendingTransitionExecutorTest extends TestCase
         $salesOrder->update(['status' => 'processed']);
         $this->assertTrue($salesOrder->status()->is(StatusStates::Processed));
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
         Queue::after(function (JobProcessed $event) {
             $this->assertTrue($event->job->hasFailed());
         });
 
         //Act
-        $pendingTransition = $salesOrder->status()->pendingTransitions()->first();
+        $pendingTransition = $salesOrder->status()->postponedTransitions()->first();
 
-        PendingTransitionExecutor::dispatch($pendingTransition);
+        PostponedTransitionExecutor::dispatch($pendingTransition);
     }
 }

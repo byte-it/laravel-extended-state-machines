@@ -4,7 +4,7 @@ namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
-use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
@@ -369,7 +369,7 @@ class HasStateMachinesTest extends TestCase
     }
 
     /** @test */
-    public function can_record_pending_transition(): void
+    public function can_record_postponed_transition(): void
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
@@ -383,7 +383,7 @@ class HasStateMachinesTest extends TestCase
 
         $responsible = $salesManager;
 
-        $pendingTransition = $salesOrder->status()->postponeTransitionTo(
+        $postponedTransition = $salesOrder->status()->postponeTransitionTo(
           StatusStates::Approved,
           Carbon::tomorrow()->startOfDay(),
           $customProperties,
@@ -391,48 +391,48 @@ class HasStateMachinesTest extends TestCase
         );
 
         //Assert
-        $this->assertNotNull($pendingTransition);
+        $this->assertNotNull($postponedTransition);
 
         $salesOrder->refresh();
 
         $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
-        /** @var PendingTransition $pendingTransition */
-        $pendingTransition = $salesOrder->status()
-          ->pendingTransitions()
+        /** @var \byteit\LaravelExtendedStateMachines\Models\PostponedTransition $postponedTransition */
+        $postponedTransition = $salesOrder->status()
+          ->postponedTransitions()
           ->first();
 
-        $this->assertEquals('status', $pendingTransition->field);
+        $this->assertEquals('status', $postponedTransition->field);
 
         $this->assertEquals(StatusStates::Pending,
-          $pendingTransition->from);
+          $postponedTransition->from);
         $this->assertEquals(StatusStates::Approved,
-          $pendingTransition->to);
+          $postponedTransition->to);
 
         $this->assertEquals(Carbon::tomorrow()->startOfDay(),
-          $pendingTransition->transition_at);
+          $postponedTransition->transition_at);
 
         $this->assertEquals($customProperties,
-          $pendingTransition->custom_properties);
+          $postponedTransition->custom_properties);
 
-        $this->assertNull($pendingTransition->applied_at);
+        $this->assertNull($postponedTransition->applied_at);
 
-        $this->assertEquals($salesOrder->id, $pendingTransition->model->id);
+        $this->assertEquals($salesOrder->id, $postponedTransition->model->id);
 
         $this->assertEquals($salesManager->id,
-          $pendingTransition->responsible->id);
+          $postponedTransition->responsible->id);
     }
 
     /** @test */
-    public function should_cancel_all_pending_transitions_when_transitioning_to_next_state(
+    public function should_cancel_all_postponed_transitions_when_transitioning_to_next_state(
     )
     {
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
 
-        factory(PendingTransition::class)->times(5)->create([
+        factory(PostponedTransition::class)->times(5)->create([
           'field' => 'status',
           'model_id' => $salesOrder->id,
           'model_type' => SalesOrder::class,
@@ -441,7 +441,7 @@ class HasStateMachinesTest extends TestCase
           'to' => FulfillmentStates::Partial,
         ]);
 
-        factory(PendingTransition::class)->times(5)->create([
+        factory(PostponedTransition::class)->times(5)->create([
           'field' => 'fulfillment',
           'model_id' => $salesOrder->id,
           'model_type' => SalesOrder::class,
@@ -450,8 +450,8 @@ class HasStateMachinesTest extends TestCase
           'to' => FulfillmentStates::Partial,
         ]);
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
-        $this->assertTrue($salesOrder->fulfillment()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
+        $this->assertTrue($salesOrder->fulfillment()->hasPostponedTransitions());
 
         //Act
         $salesOrder->status()->transitionTo(StatusStates::Approved);
@@ -459,8 +459,8 @@ class HasStateMachinesTest extends TestCase
         //Assert
         $salesOrder->refresh();
 
-        $this->assertFalse($salesOrder->status()->hasPendingTransitions());
-        $this->assertTrue($salesOrder->fulfillment()->hasPendingTransitions());
+        $this->assertFalse($salesOrder->status()->hasPostponedTransitions());
+        $this->assertTrue($salesOrder->fulfillment()->hasPostponedTransitions());
     }
 
     /** @test */

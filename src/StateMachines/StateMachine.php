@@ -8,7 +8,7 @@ use byteit\LaravelExtendedStateMachines\Events\TransitionCompleted;
 use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
-use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\Models\Transition as TransitionModel;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\After;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
@@ -269,17 +269,17 @@ class StateMachine
     /**
      * @return \Illuminate\Database\Eloquent\Relations\MorphMany
      */
-    public function pendingTransitions(): MorphMany
+    public function postponedTransitions(): MorphMany
     {
-        return $this->model->pendingTransitions()->forField($this->field);
+        return $this->model->postponedTransitions()->forField($this->field);
     }
 
     /**
      * @return bool
      */
-    public function hasPendingTransitions(): bool
+    public function hasPostponedTransitions(): bool
     {
-        return $this->pendingTransitions()->notApplied()->exists();
+        return $this->postponedTransitions()->notApplied()->exists();
     }
 
     /**
@@ -364,7 +364,7 @@ class StateMachine
         );
 
         // @todo allow keeping
-        $this->cancelAllPendingTransitions();
+        $this->cancelAllPostponedTransitions();
     }
 
     /**
@@ -374,7 +374,7 @@ class StateMachine
      * @param  array  $customProperties
      * @param  null  $responsible
      *
-     * @return null|PendingTransition
+     * @return null|PostponedTransition
      * @throws TransitionNotAllowedException
      */
     public function postponeTransitionTo(
@@ -383,7 +383,7 @@ class StateMachine
       Carbon $when,
       array $customProperties = [],
       $responsible = null
-    ): ?PendingTransition {
+    ): ?PostponedTransition {
 
 
         if ( ! $this->canBe($from, $to)) {
@@ -392,7 +392,7 @@ class StateMachine
 
         $responsible = $responsible ?? auth()->user();
 
-        return $this->model->recordPendingTransition(
+        return $this->model->recordPostponedTransition(
           $this->field,
           $from,
           $to,
@@ -405,9 +405,9 @@ class StateMachine
     /**
      * @return void
      */
-    public function cancelAllPendingTransitions(): void
+    public function cancelAllPostponedTransitions(): void
     {
-        $this->pendingTransitions()->delete();
+        $this->postponedTransitions()->delete();
     }
 
     /**

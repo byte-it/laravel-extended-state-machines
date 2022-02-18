@@ -11,6 +11,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 /**
  * Class PendingTransition
  * @package byteit\LaravelExtendedStateMachines\Models
+ * @property string $id
  * @property string $field
  * @property States $from
  * @property States $to
@@ -26,9 +27,8 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
  *
  *
  * @todo Add enum field
- * @todo Add accessor/mutator form from/to
  */
-class PendingTransition extends Model
+class PostponedTransition extends Model
 {
     protected $guarded = [];
 

@@ -10,6 +10,7 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\Guards\ApproveGuard;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ProcessAction;
 
 #[
   DefaultState(StatusStates::Pending),

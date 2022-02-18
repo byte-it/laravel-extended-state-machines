@@ -4,7 +4,7 @@
 namespace byteit\LaravelExtendedStateMachines\StateMachines;
 
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
-use byteit\LaravelExtendedStateMachines\Models\PendingTransition;
+use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use Carbon\Carbon;
@@ -152,17 +152,17 @@ class State
     /**
      * @return \Illuminate\Database\Eloquent\Relations\MorphMany
      */
-    public function pendingTransitions(): MorphMany
+    public function postponedTransitions(): MorphMany
     {
-        return $this->stateMachine->pendingTransitions();
+        return $this->stateMachine->postponedTransitions();
     }
 
     /**
      * @return bool
      */
-    public function hasPendingTransitions(): bool
+    public function hasPostponedTransitions(): bool
     {
-        return $this->stateMachine->hasPendingTransitions();
+        return $this->stateMachine->hasPostponedTransitions();
     }
 
     /**
@@ -185,10 +185,10 @@ class State
      * @param  array  $customProperties
      * @param null $responsible
      *
-     * @return null|PendingTransition
+     * @return null|PostponedTransition
      * @throws TransitionNotAllowedException
      */
-    public function postponeTransitionTo(States $state, Carbon $when, array $customProperties = [], $responsible = null) : ?PendingTransition
+    public function postponeTransitionTo(States $state, Carbon $when, array $customProperties = [], $responsible = null) : ?PostponedTransition
     {
         return $this->stateMachine->postponeTransitionTo(
             $this->state,

@@ -2,8 +2,8 @@
 
 namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
-use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionExecutor;
-use byteit\LaravelExtendedStateMachines\Jobs\PendingTransitionsDispatcher;
+use byteit\LaravelExtendedStateMachines\Jobs\PostponedTransitionExecutor;
+use byteit\LaravelExtendedStateMachines\Jobs\PostponedTransitionsDispatcher;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Queue;
 
-class PendingTransitionsDispatcherTest extends TestCase
+class PostponedTransitionsDispatcherTest extends TestCase
 {
     use RefreshDatabase;
     use WithFaker;
@@ -30,21 +30,21 @@ class PendingTransitionsDispatcherTest extends TestCase
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
 
-        $pendingTransition =
+        $postponed =
             $salesOrder->status()->postponeTransitionTo(StatusStates::Approved, Carbon::now()->subSecond());
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
         //Act
-        PendingTransitionsDispatcher::dispatchNow();
+        PostponedTransitionsDispatcher::dispatchNow();
 
         //Assert
         $salesOrder->refresh();
 
-        $this->assertFalse($salesOrder->status()->hasPendingTransitions());
+        $this->assertFalse($salesOrder->status()->hasPostponedTransitions());
 
-        Queue::assertPushed(PendingTransitionExecutor::class, function ($job) use ($pendingTransition) {
-            $this->assertEquals($pendingTransition->id, $job->pendingTransition->id);
+        Queue::assertPushed(PostponedTransitionExecutor::class, function (PostponedTransitionExecutor $job) use ($postponed) {
+            $this->assertEquals($postponed->id, $job->postponedTransition->id);
             return true;
         });
     }
@@ -57,15 +57,15 @@ class PendingTransitionsDispatcherTest extends TestCase
 
         $salesOrder->status()->postponeTransitionTo(StatusStates::Approved, Carbon::tomorrow());
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
         //Act
-        PendingTransitionsDispatcher::dispatchSync();
+        PostponedTransitionsDispatcher::dispatchSync();
 
         //Assert
         $salesOrder->refresh();
 
-        $this->assertTrue($salesOrder->status()->hasPendingTransitions());
+        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
 
         Queue::assertNothingPushed();
     }

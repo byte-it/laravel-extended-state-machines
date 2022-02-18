@@ -4,11 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreatePendingTransitionsTable extends Migration
+class CreatePostponedTransitionsTable extends Migration
 {
     public function up()
     {
-        Schema::create('pending_transitions', function (Blueprint $table) {
+        Schema::create('postponed_transitions', function (Blueprint $table) {
             $table->id();
 
             $table->morphs('model');
@@ -30,6 +30,6 @@ class CreatePendingTransitionsTable extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('pending_transitions');
+        Schema::dropIfExists('postponed_transitions');
     }
 }
