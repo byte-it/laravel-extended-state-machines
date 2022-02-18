@@ -104,7 +104,7 @@ class QueryScopesTest extends TestCase
         //Act
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo(StatusStates::Processed);
+                $query->to(StatusStates::Processed);
             })
             ->get()
         ;
@@ -129,7 +129,7 @@ class QueryScopesTest extends TestCase
         //Act
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedFrom(StatusStates::Approved);
+                $query->from(StatusStates::Approved);
             })
             ->get()
         ;
@@ -180,10 +180,10 @@ class QueryScopesTest extends TestCase
 
         $salesOrders = SalesOrder::with([])
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo(StatusStates::Approved);
+                $query->to(StatusStates::Approved);
             })
             ->whereHasStatus(function ($query) {
-                $query->transitionedTo(StatusStates::Processed);
+                $query->to(StatusStates::Processed);
             })
             ->get()
         ;

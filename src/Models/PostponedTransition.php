@@ -11,24 +11,13 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 /**
  * Class PendingTransition
  * @package byteit\LaravelExtendedStateMachines\Models
- * @property string $id
- * @property string $field
- * @property States $from
- * @property States $to
+ *
  * @property Carbon $transition_at
  * @property Carbon $applied_at
- * @property string $custom_properties
- * @property int $model_id
- * @property string $model_type
- * @property Model $model
- * @property int $responsible_id
- * @property string $responsible_type
- * @property Model $responsible
  *
  *
- * @todo Add enum field
  */
-class PostponedTransition extends Model
+class PostponedTransition extends AbstractTransition
 {
     protected $guarded = [];
 
@@ -42,35 +31,8 @@ class PostponedTransition extends Model
     ];
 
 
-    public function from(): Attribute{
-        return new Attribute(
-          get: fn($value) => $this->states::from($value),
-          set: fn(States $value) => $value->value,
-        );
-    }
 
-    public function to(): Attribute{
-        return new Attribute(
-          get: fn($value) => $this->states::from($value),
-          set: fn(States $value) => $value->value,
-        );
-    }
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
-     */
-    public function model(): MorphTo
-    {
-        return $this->morphTo();
-    }
-
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
-     */
-    public function responsible(): MorphTo
-    {
-        return $this->morphTo();
-    }
 
     /**
      * @param $query
@@ -92,14 +54,5 @@ class PostponedTransition extends Model
         $query->where('transition_at', '<=', now());
     }
 
-    /**
-     * @param $query
-     * @param string $field
-     *
-     * @return void
-     */
-    public function scopeForField($query, string $field): void
-    {
-        $query->where('field', $field);
-    }
+
 }
