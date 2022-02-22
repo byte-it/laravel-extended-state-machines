@@ -5,6 +5,7 @@ namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStates;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -71,6 +72,7 @@ class QueryScopesTest extends TestCase
         //Arrange
         $salesOrder = factory(SalesOrder::class)->create();
         $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->fulfillment()->transitionTo(FulfillmentStates::Complete);
         $salesOrder->status()->transitionTo(StatusStates::Processed);
 
         $anotherSalesOrder = factory(SalesOrder::class)->create();

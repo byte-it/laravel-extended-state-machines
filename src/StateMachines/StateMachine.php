@@ -4,15 +4,14 @@
 namespace byteit\LaravelExtendedStateMachines\StateMachines;
 
 
-use byteit\LaravelExtendedStateMachines\Events\TransitionCompleted;
-use byteit\LaravelExtendedStateMachines\Events\TransitionStarted;
-use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
+use byteit\LaravelExtendedStateMachines\Contracts\Transition as TransitionContract;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
 use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
+use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\Models\Transition as TransitionModel;
-use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\After;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Before;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefaultState;
+use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\DefinesTransition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
@@ -20,21 +19,16 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Carbon\Carbon;
-use Closure;
-use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Event;
 use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionEnum;
 use ReflectionException;
 use ReflectionMethod;
-use ReflectionNamedType;
 
 /**
  * @todo merge with customizations from kasching
@@ -60,6 +54,8 @@ class StateMachine
      */
     public Model $model;
 
+    protected ReflectionEnum $reflection;
+
     /**
      * @param  string  $field  The model field
      * @param  \Illuminate\Database\Eloquent\Model  $model
@@ -74,6 +70,8 @@ class StateMachine
         $this->model = $model;
 
         $this->states = $states;
+
+        $this->reflection = new ReflectionEnum($states);
 
 
         if ( ! isset(self::$booted[$states])) {
@@ -99,74 +97,6 @@ class StateMachine
              * The result is a `Collection` keyed by the class containing arrays
              * in the format `methodName` => [...AttributeInstances]
              */
-            collect($actions->actions)
-              ->each(function (string $class) use ($states) {
-                  $reflection = new ReflectionClass($class);
-
-                  collect($reflection->getMethods())
-                    ->mapWithKeys(fn(ReflectionMethod $method) => [
-                      $method->name => array_merge(
-                        $method->getAttributes(Before::class),
-                        $method->getAttributes(After::class)
-                      ),
-                    ])
-                    ->filter(fn(array $attributes) => count($attributes) > 0)
-                    ->map(fn(array $attributes) => Arr::first($attributes)
-                      ->newInstance())
-                    /**
-                     * Now we need to register event listeners for all aggregated handlers.
-                     * In the first step, generate the event name, respecting eventual wildcards.
-                     */
-                    ->each(function (
-                      After|Before $attribute,
-                      string $method
-                    ) use (
-                      $states,
-                      $class,
-                      $reflection,
-                    ) {
-
-                        /*
-                         * First try to get the model class from the method parameters.
-                         * If it has none
-                         */
-                        $methodReflection = $reflection->getMethod($method);
-                        $parameters = Arr::first($methodReflection->getParameters());
-                        $type = $parameters->getType();
-
-                        $model = '*';
-
-                        if ($type !== null) {
-                            if ($type instanceof ReflectionNamedType) {
-                                if ( ! $type->isBuiltin() && ! ($type->getName() === Model::class)) {
-                                    $model = $type->getName();
-                                }
-                            } else {
-                                throw new InvalidArgumentException("Type unions or intersections aren't allowed.");
-                            }
-                        }
-
-                        $eventName = self::event(
-                          $attribute->from,
-                          $attribute->to,
-                          $model,
-                          before: $attribute instanceof Before,
-                          after: $attribute instanceof After,
-                        );
-
-                        Event::listen($eventName,
-                          static function ($eventName, array $data) use (
-                            $class,
-                            $method
-                          ) {
-                              /** @var TransitionStarted|TransitionCompleted $event */
-                              $event = Arr::first($data);
-                              return app()
-                                ->make($class)
-                                ->{$method}($event->transition->model, $event);
-                          });
-                    });
-              });
 
 
         }
@@ -267,6 +197,18 @@ class StateMachine
     }
 
     /**
+     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
+     */
+    public function assertCanBe(
+      States $from,
+      States $to
+    ): void {
+        if ( ! $this->canBe($from, $to)) {
+            throw new TransitionNotAllowedException("Transition from [$from->value] to [$to->value] on [$this->states] is illegal");
+        }
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\MorphMany
      */
     public function postponedTransitions(): MorphMany
@@ -288,83 +230,47 @@ class StateMachine
      * @param  array  $customProperties
      * @param  mixed|null  $responsible
      *
-     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
+     * @return \byteit\LaravelExtendedStateMachines\Contracts\Transition|null
+     *
+     *
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
-     * @throws \ReflectionException
+     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
      */
     public function transitionTo(
       States $from,
       States $to,
       array $customProperties = [],
       mixed $responsible = null
-    ): void {
-        if ($to === $this->currentState()) {
-            return;
-        }
+    ): ?TransitionContract {
 
-        if ( ! $this->canBe($from, $to)) {
-            throw new TransitionNotAllowedException("Transition from [$from->value] to [$to->value] on [$this->states] is illegal");
-        }
+        $this->assertCanBe($from, $to);
 
-        $reflection = new ReflectionEnum($this->states);
 
-        $transition = new Transition(
-          $this,
+        $transition = $this->makeTransition(
           $from,
           $to,
-          $this->model,
           $customProperties,
           $responsible
         );
 
 
-        $guardsResult = $this->resolveGuards($to, $from, $reflection)
-          ->map(function (Closure $guard) use ($transition) {
-              try {
-                  return $guard($transition, $this);
-              } catch (Exception $exception) {
-                  return $exception;
-              }
-          })
-          ->reject(fn(mixed $result) => $result === true);
+        $transition = $transition->dispatch();
 
-        if ($guardsResult->isNotEmpty()) {
-            throw new TransitionGuardException("A guard canceled the transition from {$from->value} to {$to->value}");
+        if ($transition instanceof PendingTransition && $transition->pending()) {
+            // @todo: Record pending stuff
+
+            return $transition;
         }
 
-        event(
-          self::event($from, $to, $this->model::class, before: true),
-          new TransitionStarted($transition)
-        );
 
-        $field = $this->field;
-
-        $this->model->$field = $to;
-
-        $changedAttributes = $this->model->getChangedAttributes();
-
-        $this->model->save();
-
-        if ($this->recordHistory()) {
-            $responsible = $responsible ?? auth()->user();
-
-            $this->model->recordState(
-              $field,
-              $from,
-              $to,
-              $customProperties,
-              $responsible,
-              $changedAttributes
-            );
+        if ($transition instanceof Transition || $transition instanceof PendingTransition) {
+            $transition->save();
+            return $transition;
         }
 
-        event(
-          self::event($from, $to, $this->model::class, after: true),
-          new TransitionCompleted($transition)
-        );
-
-        // @todo allow keeping
-        $this->cancelAllPostponedTransitions();
+        return null;
     }
 
     /**
@@ -386,20 +292,20 @@ class StateMachine
     ): ?PostponedTransition {
 
 
-        if ( ! $this->canBe($from, $to)) {
-            throw new TransitionNotAllowedException();
+        $this->assertCanBe($from, $to);
+
+        $transition = $this
+          ->makeTransition($from, $to, $customProperties, $responsible)
+          ->postpone($when)
+          ->toTransition();
+
+        if ($transition instanceof PostponedTransition) {
+            $transition->save();
+
+            return $transition;
         }
 
-        $responsible = $responsible ?? auth()->user();
-
-        return $this->model->recordPostponedTransition(
-          $this->field,
-          $from,
-          $to,
-          $when,
-          $customProperties,
-          $responsible
-        );
+        return null;
     }
 
     /**
@@ -454,40 +360,75 @@ class StateMachine
         return count($attributes) === 1;
     }
 
-    protected function resolveGuards(
+    /**
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $to
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $from
+     *
+     * @return array
+     */
+    public function resolveGuards(States $to, States $from): array
+    {
+        return $this->resolveAttributes($to, $from, guards: true);
+    }
+
+    /**
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $from
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $to
+     *
+     * @return string|null
+     */
+    public function resolveAction(States $from, States $to): ?string
+    {
+        return Arr::first($this->resolveAttributes($to, $from, actions: true));
+    }
+
+    protected function resolveAttributes(
       States $to,
       States $from,
-      ReflectionEnum $reflection
-    ): Collection {
-        $classGuards = collect($reflection->getAttributes(HasGuards::class))
-          ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
-          ->map(fn(HasGuards $instance) => $instance->guards)
-          ->flatten()
-          ->map(fn(string $class) => static function (Transition $transition
-          ) use ($class) {
-              return App::make($class)->guard($transition);
-          });
+      bool $guards = false,
+      bool $actions = false,
+    ): array {
+        if ($guards && $actions) {
+            throw new InvalidArgumentException("Only guards or actions");
+        }
 
-        $inlineGuards = collect($reflection->getMethods())
+        $hasAttribute = $guards ? HasGuards::class : HasActions::class;
+        $transitionAttribute = $guards ? Guards::class : Before::class;
+
+        $classes = collect($this->reflection->getAttributes($hasAttribute))
+          ->map(fn(ReflectionAttribute $attribute) => $attribute->newInstance())
+          ->map(fn(HasGuards|HasActions $instance) => $instance->classes)
+          ->flatten()
+          ->mapWithKeys(function (string $class) use ($transitionAttribute) {
+              $reflection = new ReflectionClass($class);
+              /** @var DefinesTransition $instance */
+              $instance = Arr::first($reflection->getAttributes($transitionAttribute))
+                ?->newInstance();
+
+              return [$class => $instance];
+          })
+          ->reject(null);
+
+        // @todo Filter by transition
+
+        $inline = collect($this->reflection->getMethods())
           ->mapWithKeys(fn(ReflectionMethod $method
           ) => [$method->name => $method])
           ->map(fn(ReflectionMethod $method
-          ) => Arr::first($method->getAttributes(Guards::class))
+          ) => Arr::first($method->getAttributes($transitionAttribute))
             ?->newInstance())
           ->reject(null)
-          ->filter(fn(Guards $guard
-          ) => $guard->from === null || $guard->from === $from)
-          ->filter(fn(Guards $guard
-          ) => ($guard->from !== null && $guard->to === null) || $guard->to === $to)
-          ->map(fn(Guards $guards, string $method) => static function (
-            Transition $transition,
-            StateMachine $machine
-          ) use ($method) {
-              return $machine->states::{$method}($transition);
-          });
+          ->reject(fn(DefinesTransition $instance
+          ) => $instance->from !== null && $instance->from !== $from)
+          ->reject(fn(DefinesTransition $instance
+          ) => $instance->to !== null && $instance->to !== $to);
 
 
-        return $classGuards->merge($inlineGuards);
+        return $classes->merge($inline)
+          ->reject(fn(DefinesTransition $instance
+          ) => $instance->from !== null && $instance->from !== $from)
+          ->reject(fn(DefinesTransition $instance
+          ) => $instance->to !== null && $instance->to !== $to)->keys()->all();
     }
 
     /**
@@ -527,6 +468,33 @@ class StateMachine
               default => throw new InvalidArgumentException('At least oe of $before or $after must be true')
           },
         ])->join('.');
+    }
+
+    /**
+     * @param  States  $from
+     * @param  States  $to
+     * @param  mixed  $customProperties
+     * @param  mixed  $responsible
+     *
+     * @return \byteit\LaravelExtendedStateMachines\StateMachines\PendingTransition
+     */
+    protected function makeTransition(
+      States $from,
+      States $to,
+      mixed $customProperties,
+      mixed $responsible = null
+    ): PendingTransition {
+
+        $responsible = $responsible ?? auth()->user();
+
+        return new PendingTransition(
+          $this,
+          $from,
+          $to,
+          $this->model,
+          $customProperties,
+          $responsible
+        );
     }
 
 }

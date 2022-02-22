@@ -7,16 +7,13 @@ namespace byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrder
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\AddNotes;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\DispatchJob;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\UpdateOrderTotal;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ProcessAction;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\QueuedTransitionAction;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\SyncTransitionAction;
 
 #[
   RecordHistory,
-  HasActions([UpdateOrderTotal::class, AddNotes::class, DispatchJob::class])
+  HasActions([QueuedTransitionAction::class, SyncTransitionAction::class])
 ]
-
 enum StatusWithBeforeTransitionHookStates: string implements States
 {
     case Pending = 'pending';
@@ -31,22 +28,4 @@ enum StatusWithBeforeTransitionHookStates: string implements States
             default => []
         };
     }
-
-
-//
-//    public function beforeTransitionHooks(): array
-//    {
-//        return [
-//            'pending' => [
-//                function($to, $model) {
-//                    $model->total = 100;
-//                },
-//                function($to, $model) {
-//                    $model->notes = 'Notes updated';
-//                },
-//                function ($to, $model) {
-//                }
-//            ]
-//        ];
-//    }
 }

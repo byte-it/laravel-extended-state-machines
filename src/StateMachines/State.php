@@ -13,7 +13,8 @@ use Illuminate\Support\Collection;
 use TypeError;
 
 /**
- * Class State
+ * Represents the current state for the field and state machine
+ *
  * @package byteit\LaravelExtendedStateMachines\StateMachines
  * @property States $state
  * @property StateMachine $stateMachine

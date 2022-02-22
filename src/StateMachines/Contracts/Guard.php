@@ -2,17 +2,17 @@
 
 namespace byteit\LaravelExtendedStateMachines\StateMachines\Contracts;
 
-use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
+use byteit\LaravelExtendedStateMachines\StateMachines\PendingTransition;
 
 interface Guard
 {
 
     /**
-     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Transition  $transition
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\PendingTransition  $transition
      *
      * @return bool
      *
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
      */
-    public function guard(Transition $transition): bool;
+    public function guard(PendingTransition $transition): bool;
 }

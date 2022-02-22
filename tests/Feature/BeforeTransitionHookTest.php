@@ -33,9 +33,8 @@ class BeforeTransitionHookTest extends TestCase
         $salesOrder->refresh();
 
         $this->assertEquals(100, $salesOrder->total);
-        $this->assertEquals('Notes updated', $salesOrder->notes);
+        $this->assertEquals('approved sync', $salesOrder->notes);
 
-        Queue::assertPushed(BeforeTransitionJob::class);
     }
 
     /** @test */

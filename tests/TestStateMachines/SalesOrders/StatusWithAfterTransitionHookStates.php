@@ -9,9 +9,9 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasActions;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use byteit\LaravelExtendedStateMachines\Tests\TestJobs\AfterTransitionJob;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\AddNotes;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\DispatchJob;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\UpdateOrderTotal;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionSubscriber\AddNotes;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionSubscriber\DispatchJob;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionSubscriber\UpdateOrderTotal;
 
 #[RecordHistory]
 #[DefaultState(StatusWithAfterTransitionHookStates::Pending)]

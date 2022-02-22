@@ -2,6 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Models;
 
+use byteit\LaravelExtendedStateMachines\Contracts\Transition as TransitionContract;
 use byteit\LaravelExtendedStateMachines\Traits\HasStateMachines;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,10 +16,9 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
  *
  * @package byteit\LaravelExtendedStateMachines\Models
  *
-
  *
  */
-class Transition extends AbstractTransition
+class Transition extends AbstractTransition implements TransitionContract
 {
 
     protected $guarded = [];

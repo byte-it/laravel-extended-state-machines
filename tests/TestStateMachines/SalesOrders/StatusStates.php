@@ -8,9 +8,8 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\Guards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\HasGuards;
 use byteit\LaravelExtendedStateMachines\StateMachines\Attributes\RecordHistory;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
-use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
+use byteit\LaravelExtendedStateMachines\StateMachines\PendingTransition;
 use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\Guards\ApproveGuard;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\TransitionActions\ProcessAction;
 
 #[
   DefaultState(StatusStates::Pending),
@@ -36,7 +35,7 @@ enum StatusStates: string implements States
     }
 
     #[Guards(from: self::Approved, to: self::Processed)]
-    public static function guardProcessing(Transition $transition): bool
+    public static function guardProcessing(PendingTransition $transition): bool
     {
         return $transition->model->fulfillment === FulfillmentStates::Complete;
     }

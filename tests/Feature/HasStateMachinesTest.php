@@ -95,27 +95,6 @@ class HasStateMachinesTest extends TestCase
         $this->assertEquals(StatusStates::Approved, $salesOrder->status);
     }
 
-    /** @test */
-    public function should_not_do_anything_when_transitioning_to_same_state(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-        $this->assertEquals(1, $salesOrder->status()->history()->count());
-
-        //Act
-        $salesOrder->status()->transitionTo(StatusStates::Pending);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-        $this->assertEquals(1, $salesOrder->status()->history()->count());
-    }
 
     /** @test */
     public function should_register_responsible_for_transition_when_specified(

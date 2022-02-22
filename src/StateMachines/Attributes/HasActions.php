@@ -8,7 +8,7 @@ use Attribute;
 class HasActions
 {
     public function __construct(
-      public readonly array $actions
+      public readonly array $classes
     )
     {
     }

@@ -2,7 +2,7 @@
 
 namespace byteit\LaravelExtendedStateMachines\Events;
 
-use byteit\LaravelExtendedStateMachines\StateMachines\Transition;
+use byteit\LaravelExtendedStateMachines\StateMachines\PendingTransition;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -13,7 +13,7 @@ class TransitionStarted
 
 
     public function __construct(
-      public readonly Transition $transition
+      public readonly PendingTransition $transition
     )
     {
     }
