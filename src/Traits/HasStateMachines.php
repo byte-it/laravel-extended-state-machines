@@ -38,59 +38,59 @@ trait HasStateMachines
 
         // @todo Maybe remove this in favor of dedicated methods on the model
         collect($model->stateMachines)
-          ->each(function ($_, string $field) {
-              MacroableModels::addMacro(
-                static::class,
-                $field,
-                function () use ($field) {
-                    $stateMachine = new StateMachine(
-                      $field,
-                      $this,
-                      $this->stateMachines['field']
-                    );
-                    return new State(
-                      $this->{$stateMachine->field},
-                      $stateMachine
-                    );
-                });
+            ->each(function ($_, string $field) {
+                MacroableModels::addMacro(
+                    static::class,
+                    $field,
+                    function () use ($field) {
+                        $stateMachine = new StateMachine(
+                            $this->stateMachines[$field]
+                        );
+                        return new State(
+                            $this->{$field},
+                            $this,
+                            $field,
+                            $stateMachine
+                        );
+                    });
 
-              $camelField = Str::of($field)->camel();
+                $camelField = Str::of($field)->camel();
 
-              MacroableModels::addMacro(
-                static::class,
-                $camelField,
-                function () use ($field) {
-                    $stateMachine = new  StateMachine(
-                      $field,
-                      $this,
-                      $this->stateMachines[$field]
-                    );
-                    return new State(
-                      $this->{$stateMachine->field},
-                      $stateMachine
-                    );
-                });
+                MacroableModels::addMacro(
+                    static::class,
+                    $camelField,
+                    function () use ($field) {
+                        $stateMachine = new  StateMachine(
+                            $this->stateMachines[$field]
+                        );
+                        return new State(
+                            $this->{$field},
+                            $this,
+                            $field,
+                            $stateMachine
+                        );
+                    });
 
-              $studlyField = Str::of($field)->studly();
+                $studlyField = Str::of($field)->studly();
 
-              Builder::macro("whereHas{$studlyField}",
-                function ($callable = null) use ($field) {
-                    $model = $this->getModel();
+                Builder::macro("whereHas{$studlyField}",
+                    function ($callable = null) use ($field) {
+                        $model = $this->getModel();
 
-                    if ( ! method_exists($model, 'stateHistory')) {
-                        return $this->newQuery();
-                    }
+                        if ( ! method_exists($model, 'stateHistory')) {
+                            return $this->newQuery();
+                        }
 
-                    return $this->whereHas('stateHistory',
-                      function ($query) use ($field, $callable) {
-                          $query->forField($field);
-                          if ($callable !== null) {
-                              $callable($query);
-                          }
-                          return $query;
-                      });
-                });
-          });
+                        return $this->whereHas('stateHistory',
+                            function ($query) use ($field, $callable) {
+                                $query->forField($field);
+                                if ($callable !== null) {
+                                    $callable($query);
+                                }
+                                return $query;
+                            });
+                    });
+            });
 
 
         self::creating(static function (Model|self $model) {
@@ -99,25 +99,25 @@ trait HasStateMachines
 
         self::created(static function (Model|self $model) {
             collect($model->stateMachines)
-              ->each(function ($_, $field) use ($model) {
-                  $currentState = $model->$field;
-                  $stateMachine = $model->$field()->stateMachine();
+                ->each(function ($_, $field) use ($model) {
+                    $currentState = $model->$field;
+                    $stateMachine = $model->$field()->stateMachine();
 
-                  if ($currentState === null) {
-                      return;
-                  }
+                    if ($currentState === null) {
+                        return;
+                    }
 
-                  if ( ! $stateMachine->recordHistory()) {
-                      return;
-                  }
+                    if ( ! $stateMachine->recordHistory()) {
+                        return;
+                    }
 
-                  $responsible = auth()->user();
+                    $responsible = auth()->user();
 
-                  $changedAttributes = $model->getChangedAttributes();
+                    $changedAttributes = $model->getChangedAttributes();
 
-                  $model->recordState($field, null, $currentState, [],
-                    $responsible, $changedAttributes);
-              });
+                    $model->recordState($field, null, $currentState, [],
+                        $responsible, $changedAttributes);
+                });
         });
     }
 
@@ -138,11 +138,11 @@ trait HasStateMachines
     public function initStateMachines(): void
     {
         collect($this->stateMachines)
-          ->each(function ($statesClass, $field) {
-              $stateMachine = new StateMachine($field, $this, $statesClass);
+            ->each(function ($statesClass, $field) {
+                $stateMachine = new StateMachine($statesClass);
 
-              $this->{$field} = $this->{$field} ?? $stateMachine->defaultState();
-          });
+                $this->{$field} = $this->{$field} ?? $stateMachine->defaultState();
+            });
     }
 
     /**
@@ -167,15 +167,15 @@ trait HasStateMachines
     public function getChangedAttributes(): array
     {
         return collect($this->getDirty())
-          ->mapWithKeys(function ($_, $attribute) {
-              return [
-                $attribute => [
-                  'new' => data_get($this->getAttributes(), $attribute),
-                  'old' => data_get($this->getOriginal(), $attribute),
-                ],
-              ];
-          })
-          ->toArray();
+            ->mapWithKeys(function ($_, $attribute) {
+                return [
+                    $attribute => [
+                        'new' => data_get($this->getAttributes(), $attribute),
+                        'old' => data_get($this->getOriginal(), $attribute),
+                    ],
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -189,20 +189,20 @@ trait HasStateMachines
      * @return \byteit\LaravelExtendedStateMachines\Models\Transition|bool
      */
     public function recordState(
-      string $field,
-      ?States $from,
-      States $to,
-      array $customProperties = [],
-      $responsible = null,
-      array $changedAttributes = []
+        string $field,
+        ?States $from,
+        States $to,
+        array $customProperties = [],
+        $responsible = null,
+        array $changedAttributes = []
     ): Transition|bool {
         $stateHistory = Transition::make([
-          'field' => $field,
-          'from' => $from,
-          'to' => $to,
-          'states' => $this->stateMachines[$field],
-          'custom_properties' => $customProperties,
-          'changed_attributes' => $changedAttributes,
+            'field' => $field,
+            'from' => $from,
+            'to' => $to,
+            'states' => $this->stateMachines[$field],
+            'custom_properties' => $customProperties,
+            'changed_attributes' => $changedAttributes,
         ]);
 
         if ($responsible !== null) {
@@ -223,21 +223,21 @@ trait HasStateMachines
      * @return \byteit\LaravelExtendedStateMachines\Models\PostponedTransition|bool
      */
     public function recordPostponedTransition(
-      string $field,
-      ?States $from,
-      States $to,
-      Carbon $when,
-      array $customProperties = [],
-      mixed $responsible = null
+        string $field,
+        ?States $from,
+        States $to,
+        Carbon $when,
+        array $customProperties = [],
+        mixed $responsible = null
     ): PostponedTransition|bool {
         /** @var PostponedTransition $postponedTransition */
         $postponedTransition = PostponedTransition::make([
-          'field' => $field,
-          'from' => $from,
-          'to' => $to,
-          'states' => $this->stateMachines[$field],
-          'transition_at' => $when,
-          'custom_properties' => $customProperties,
+            'field' => $field,
+            'from' => $from,
+            'to' => $to,
+            'states' => $this->stateMachines[$field],
+            'transition_at' => $when,
+            'custom_properties' => $customProperties,
         ]);
 
         if ($responsible !== null) {
@@ -245,7 +245,7 @@ trait HasStateMachines
         }
 
         return $this->postponedTransitions()
-          ->save($postponedTransition);
+            ->save($postponedTransition);
     }
 
 }

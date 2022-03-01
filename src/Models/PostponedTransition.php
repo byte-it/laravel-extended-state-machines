@@ -3,14 +3,16 @@
 namespace byteit\LaravelExtendedStateMachines\Models;
 
 use byteit\LaravelExtendedStateMachines\Contracts\Transition as TransitionContract;
+use byteit\LaravelExtendedStateMachines\Database\Factories\PostponedTransitionFactory;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 
 /**
- * Class PendingTransition
+ * Class PostponedTransition
  * @package byteit\LaravelExtendedStateMachines\Models
  *
  * @property Carbon $transition_at
@@ -20,6 +22,8 @@ use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
  */
 class PostponedTransition extends AbstractTransition implements TransitionContract
 {
+    use HasFactory;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -55,5 +59,9 @@ class PostponedTransition extends AbstractTransition implements TransitionContra
         $query->where('transition_at', '<=', now());
     }
 
+    protected static function newFactory()
+    {
+        return new PostponedTransitionFactory();
+    }
 
 }

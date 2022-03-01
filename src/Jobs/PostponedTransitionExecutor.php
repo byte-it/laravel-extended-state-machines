@@ -45,5 +45,8 @@ class PostponedTransitionExecutor implements ShouldQueue
         }
 
         $model->$field()->transitionTo($to, $customProperties, $responsible);
+
+        $this->postponedTransition->applied_at = now();
+        $this->postponedTransition->save();
     }
 }

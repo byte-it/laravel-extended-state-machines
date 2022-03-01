@@ -8,6 +8,7 @@ use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\Models\Transition;
 use byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
 use TypeError;
@@ -32,9 +33,19 @@ class State
      */
     public StateMachine $stateMachine;
 
-    public function __construct(States $state, StateMachine $stateMachine)
+    /** @var \Illuminate\Database\Eloquent\Model&\byteit\LaravelExtendedStateMachines\Traits\HasStateMachines  */
+    protected Model $model;
+
+    /**
+     * @var string
+     */
+    protected string $field;
+
+    public function __construct(States $state, Model $model, string $field,StateMachine $stateMachine)
     {
         $this->state = $state;
+        $this->model = $model;
+        $this->field = $field;
         $this->stateMachine = $stateMachine;
     }
 
@@ -84,7 +95,7 @@ class State
     public function was(States $state): bool
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->was($state);
+        return $this->history()->to($state)->exists();
     }
 
     /**
@@ -95,7 +106,7 @@ class State
     public function timesWas(States $state): int
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->timesWas($state);
+        return $this->history()->to($state)->count();
     }
 
     /**
@@ -106,7 +117,13 @@ class State
     public function whenWas(States $state): ?Carbon
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->whenWas($state);
+        $stateHistory = $this->snapshotWhen($state);
+
+        if ($stateHistory === null) {
+            return null;
+        }
+
+        return $stateHistory->created_at;
     }
 
     /**
@@ -117,7 +134,7 @@ class State
     public function snapshotWhen(States $state): ?Transition
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->snapshotWhen($state);
+        return $this->history()->to($state)->latest('id')->first();
     }
 
     /**
@@ -128,7 +145,7 @@ class State
     public function snapshotsWhen(States $state): Collection
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->snapshotsWhen($state);
+        return $this->history()->to($state)->get();
     }
 
     /**
@@ -136,7 +153,7 @@ class State
      */
     public function history(): MorphMany
     {
-        return $this->stateMachine->history();
+        return $this->model->stateHistory()->forField($this->field);
     }
 
     /**
@@ -147,7 +164,7 @@ class State
     public function canBe(States $state): bool
     {
         $this->assertStateClass($state);
-        return $this->stateMachine->canBe($from = $this->state, $to = $state);
+        return $this->stateMachine->canBe($this->state, $state);
     }
 
     /**
@@ -155,7 +172,7 @@ class State
      */
     public function postponedTransitions(): MorphMany
     {
-        return $this->stateMachine->postponedTransitions();
+        return $this->model->postponedTransitions()->forField($this->field);
     }
 
     /**
@@ -163,16 +180,41 @@ class State
      */
     public function hasPostponedTransitions(): bool
     {
-        return $this->stateMachine->hasPostponedTransitions();
+        return $this->postponedTransitions()->notApplied()->exists();
     }
 
     /**
-     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
-     * @throws \ReflectionException
+     * @return void
      */
-    public function transitionTo(States $to, $customProperties = [], $responsible = null): void
+    public function cancelAllPostponedTransitions(): void
+    {
+        $this->postponedTransitions()->delete();
+    }
+
+    /**
+     * @return array
+     */
+    public function transitions(): array
+    {
+        return collect($this->state::cases())
+            ->map(fn(States $states) => $states->transitions())
+            ->all();
+    }
+
+    /**
+     * @param  \byteit\LaravelExtendedStateMachines\StateMachines\Contracts\States  $to
+     * @param  array  $customProperties
+     * @param  null  $responsible
+     *
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
+     * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException
+     */
+    public function transitionTo(States $to, array $customProperties = [], $responsible = null): void
     {
         $this->stateMachine->transitionTo(
+            $this->model,
+            $this->field,
             $this->state,
             $to,
             $customProperties,
@@ -192,6 +234,8 @@ class State
     public function postponeTransitionTo(States $state, Carbon $when, array $customProperties = [], $responsible = null) : ?PostponedTransition
     {
         return $this->stateMachine->postponeTransitionTo(
+            $this->model,
+            $this->field,
             $this->state,
             $state,
             $when,

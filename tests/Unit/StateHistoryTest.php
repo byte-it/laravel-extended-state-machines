@@ -1,63 +1,55 @@
 <?php
 
-namespace byteit\LaravelExtendedStateMachines\Tests\Unit;
-
 use byteit\LaravelExtendedStateMachines\Models\Transition;
-use byteit\LaravelExtendedStateMachines\Tests\TestCase;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\State;
 
-class StateHistoryTest extends TestCase
-{
 
-    use RefreshDatabase;
-    use WithFaker;
-
-    /** @test */
-    public function can_get_custom_property(): void
-    {
-        //Arrange
-        $comments = $this->faker->sentence;
-
-        $stateHistory = factory(Transition::class)->create([
-          'from' => StatusStates::Pending,
-          'to' => StatusStates::Processed,
-          'states' => StatusStates::class,
-          'custom_properties' => [
+it('can get custom property', function () {
+    //Arrange
+    $comments = 'Test comment';
+    $transition = Transition::factory()->create([
+        'from' => State::Init,
+        'to' => State::Intermediate,
+        'states' => State::class,
+        'field' => 'field',
+        'model_type' => 'Model',
+        'model_id' => 1,
+        'custom_properties' => [
             'comments' => $comments,
-          ],
-        ]);
+        ],
+    ]);
 
-        //Act
-        $result = $stateHistory->getCustomProperty('comments');
+    //Act
+    $result = $transition->getCustomProperty('comments');
 
-        //Assert
-        $this->assertEquals($comments, $result);
-    }
+    //Assert
+    $this->assertEquals($comments, $result);
+});
 
-    /** @test */
-    public function can_get_all_custom_properties(): void
-    {
-        //Arrange
-        $customProperties = [
-          'amount' => $this->faker->numberBetween(1, 100),
-          'comments' => $this->faker->sentence,
-          'approved_by' => $this->faker->randomDigitNotNull,
-        ];
 
-        $stateHistory = factory(Transition::class)->create([
-          'from' => StatusStates::Pending,
-          'to' => StatusStates::Processed,
-          'states' => StatusStates::class,
-          'custom_properties' => $customProperties,
-        ]);
+it('can get all custom properties', function (): void {
+    //Arrange
+    $customProperties = [
+        'amount' => 2,
+        'comments' => 'Test comment',
+        'approved_by' => 1,
+    ];
 
-        //Act
-        $result = $stateHistory->allCustomProperties();
+    $transition = Transition::factory()->create([
+        'from' => State::Init,
+        'to' => State::Intermediate,
+        'field' => 'field',
+        'model_type' => 'Model',
+        'model_id' => 1,
+        'states' => State::class,
+        'custom_properties' => $customProperties,
+    ]);
 
-        //Assert
-        $this->assertEquals($customProperties, $result);
-    }
+    //Act
+    $result = $transition->allCustomProperties();
 
-}
+    //Assert
+    $this->assertEquals($customProperties, $result);
+});
+
+

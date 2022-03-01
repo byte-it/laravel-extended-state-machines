@@ -25,9 +25,6 @@ class PostponedTransitionsDispatcher implements ShouldQueue
             ->get()
             ->each(function (PostponedTransition $pendingTransition) {
                 PostponedTransitionExecutor::dispatch($pendingTransition);
-
-                $pendingTransition->applied_at = now();
-                $pendingTransition->save();
             });
     }
 }

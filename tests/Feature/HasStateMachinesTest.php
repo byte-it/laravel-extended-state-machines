@@ -4,456 +4,410 @@ namespace byteit\LaravelExtendedStateMachines\Tests\Feature;
 
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException;
 use byteit\LaravelExtendedStateMachines\Exceptions\TransitionNotAllowedException;
-use byteit\LaravelExtendedStateMachines\Models\PostponedTransition;
 use byteit\LaravelExtendedStateMachines\StateMachines\StateMachine;
-use byteit\LaravelExtendedStateMachines\Tests\TestCase;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesManager;
 use byteit\LaravelExtendedStateMachines\Tests\TestModels\SalesOrder;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\FulfillmentStates;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusStates;
-use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StatusWithBeforeTransitionHookStates;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\State;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StateWithAsyncAction;
+use byteit\LaravelExtendedStateMachines\Tests\TestStateMachines\SalesOrders\StateWithSyncAction;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Validation\ValidationException;
-use Throwable;
 
-class HasStateMachinesTest extends TestCase
-{
 
-    use RefreshDatabase;
-    use WithFaker;
+it('can configure state machines', function (): void {
+    //Act
+    $salesOrder = SalesOrder::factory()->create();
 
-    /** @test */
-    public function can_configure_state_machines(): void
-    {
-        //Act
-        $salesOrder = factory(SalesOrder::class)->create();
+    $this->assertEquals(StateWithSyncAction::class,
+        $salesOrder->stateMachines['sync_state']);
+    $this->assertEquals(StateWithAsyncAction::class,
+        $salesOrder->stateMachines['async_state']);
 
-        $this->assertEquals(StatusStates::class,
-          $salesOrder->stateMachines['status']);
-        $this->assertEquals(FulfillmentStates::class,
-          $salesOrder->stateMachines['fulfillment']);
+    //Assert
+    $this->assertNotNull($salesOrder->syncState());
 
-        //Assert
-        $this->assertNotNull($salesOrder->status());
+    $this->assertNotNull($salesOrder->asyncState());
+});
 
-        $this->assertNotNull($salesOrder->fulfillment());
-    }
 
-    /** @test */
-    public function should_set_default_state_for_field(): void
-    {
-        $salesOrder = factory(SalesOrder::class)->create();
+it('should set default state for field', function (): void {
+    $salesOrder = SalesOrder::factory()->create();
 
+    //Arrange
+    $statusStateMachine = new StateMachine(
+        StateWithSyncAction::class
+    );
+
+    $fulfillmentStateMachine = new StateMachine(
+        StateWithAsyncAction::class
+    );
+
+    //Act
+
+    //Assert
+    $this->assertEquals(
+        $statusStateMachine->defaultState(),
+        $salesOrder->sync_state
+    );
+    $this->assertEquals(
+        $statusStateMachine->defaultState(),
+        $salesOrder->syncState()->state
+    );
+
+    $this->assertEquals(
+        1,
+        $salesOrder->syncState()->history()->count()
+    );
+
+    $this->assertEquals(
+        $fulfillmentStateMachine->defaultState(),
+        $salesOrder->async_state
+    );
+
+    $this->assertEquals(
+        $fulfillmentStateMachine->defaultState(),
+        $salesOrder->asyncState()->state
+    );
+
+    $this->assertEquals(
+        1,
+        $salesOrder->asyncState()->history()->count()
+    );
+});
+
+
+it('should transition to next state', function (): void {
+    /**
+     * @todo Create proper model without actions
+     */
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertTrue($salesOrder->syncState()
+        ->is(StateWithSyncAction::Created));
+
+    $this->assertEquals(StateWithSyncAction::Created,
+        $salesOrder->sync_state);
+
+    //Act
+    $salesOrder->syncState()->transitionTo(StateWithSyncAction::SyncAction);
+
+    //Assert
+    $salesOrder->refresh();
+
+    $this->assertTrue($salesOrder->syncState()
+        ->is(StateWithSyncAction::SyncAction));
+
+    $this->assertEquals(StateWithSyncAction::SyncAction,
+        $salesOrder->sync_state);
+});
+
+it('should register responsible for transition when specified',
+    function (): void {
         //Arrange
-        $statusStateMachine = new StateMachine(
-          'status',
-          $salesOrder,
-          StatusStates::class
-        );
+        $salesManager = SalesManager::factory()->create();
 
-        $fulfillmentStateMachine = new StateMachine(
-          'fulfillment', $salesOrder,
-          FulfillmentStates::class
-        ,);
+        $salesOrder = SalesOrder::factory()->create();
 
         //Act
-
-        //Assert
-        $this->assertEquals($statusStateMachine->defaultState(),
-          $salesOrder->status);
-        $this->assertEquals($statusStateMachine->defaultState(),
-          $salesOrder->status()->state);
-        $this->assertEquals(1, $salesOrder->status()->history()->count());
-
-        $this->assertEquals($fulfillmentStateMachine->defaultState(),
-          $salesOrder->fulfillment);
-        $this->assertEquals($fulfillmentStateMachine->defaultState(),
-          $salesOrder->fulfillment()->state);
-        $this->assertEquals(0, $salesOrder->fulfillment()->history()->count());
-    }
-
-    /** @test */
-    public function should_transition_to_next_state(): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-        $this->assertEquals(StatusStates::Pending, $salesOrder->status);
-
-        //Act
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->syncState()
+            ->transitionTo(StateWithSyncAction::SyncAction, [], $salesManager);
 
         //Assert
         $salesOrder->refresh();
 
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Approved));
-
-        $this->assertEquals(StatusStates::Approved, $salesOrder->status);
-    }
-
-
-    /** @test */
-    public function should_register_responsible_for_transition_when_specified(
-    ): void
-    {
-        //Arrange
-        $salesManager = factory(SalesManager::class)->create();
-
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        //Act
-        $salesOrder->status()
-          ->transitionTo(StatusStates::Approved, [], $salesManager);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $responsible = $salesOrder->status()->responsible();
+        $responsible = $salesOrder->syncState()->responsible();
 
         $this->assertEquals($salesManager->id, $responsible->id);
         $this->assertEquals(SalesManager::class, get_class($responsible));
 
-        $responsible = $salesOrder->status()
-          ->snapshotWhen(StatusStates::Approved)->responsible;
+        $responsible = $salesOrder->syncState()
+            ->snapshotWhen(StateWithSyncAction::SyncAction)->responsible;
         $this->assertEquals($salesManager->id, $responsible->id);
         $this->assertEquals(SalesManager::class, get_class($responsible));
-    }
+    });
 
-    /** @test */
-    public function should_register_auth_as_responsible_for_transition_when_available(
-    ): void
-    {
+
+it('should register auth as responsible for transition when available',
+    function (): void {
         //Arrange
-        $salesManager = factory(SalesManager::class)->create();
+        $salesManager = SalesManager::factory()->create();
 
         $this->actingAs($salesManager);
 
-        $salesOrder = factory(SalesOrder::class)->create();
+        $salesOrder = SalesOrder::factory()->create();
 
         //Act
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
+        $salesOrder->syncState()->transitionTo(StateWithSyncAction::SyncAction);
 
         //Assert
         $salesOrder->refresh();
 
-        $responsible = $salesOrder->status()->responsible();
+        $responsible = $salesOrder->syncState()->responsible();
 
         $this->assertEquals($salesManager->id, $responsible->id);
         $this->assertEquals(SalesManager::class, get_class($responsible));
-    }
+    });
 
-    /** @test */
-    public function can_check_next_possible_transitions(): void
-    {
+
+it('can check next possible transitions', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertTrue($salesOrder->syncState()
+        ->is(StateWithSyncAction::Created));
+
+    //Act - Assert
+    $this->assertTrue($salesOrder->syncState()
+        ->canBe(StateWithSyncAction::SyncAction));
+
+    $this->assertFalse($salesOrder->syncState()
+        ->canBe(StateWithSyncAction::Created));
+});
+
+
+it('should throw exception for invalid state on transition', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertFalse($salesOrder->syncState()
+        ->canBe(StateWithSyncAction::Created));
+
+    $this->expectException(TransitionNotAllowedException::class);
+    $salesOrder->syncState()->transitionTo(StateWithSyncAction::Created);
+
+});
+
+
+it('should throw exception for class guard on transition', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertTrue($salesOrder->state()
+        ->is(State::Init));
+
+
+    $this->assertTrue($salesOrder->state()
+        ->canBe(State::Intermediate));
+
+    $this->expectException(TransitionGuardException::class);
+    $salesOrder->state()->transitionTo(State::Guarded);
+
+});
+
+it('should throw exception for inline guard on transition', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertTrue($salesOrder->state()
+        ->is(State::Init));
+
+
+    $this->assertTrue($salesOrder->state()
+        ->canBe(State::Intermediate));
+
+    $this->expectException(TransitionGuardException::class);
+    $salesOrder->state()->transitionTo(State::InlineGuarded);
+
+});
+
+
+it('should record history when transitioning to next state', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $this->assertTrue($salesOrder->syncState()
+        ->stateMachine()
+        ->recordHistory());
+
+    $this->assertEquals(1, $salesOrder->syncState()->history()->count());
+
+    //Act
+    $salesOrder->syncState()->transitionTo(StateWithSyncAction::SyncAction);
+
+    //Assert
+    $salesOrder->refresh();
+
+    $this->assertEquals(2, $salesOrder->syncState()->history()->count());
+});
+
+
+it('should record history when creating model', function (): void {
+    //Act
+    $salesOrder = SalesOrder::factory()->create();
+
+    //Assert
+    $salesOrder->refresh();
+
+    $this->assertEquals(1, $salesOrder->syncState()->history()->count());
+});
+
+
+it('should save auth user as responsible in record history when creating model',
+    function (): void {
         //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-        //Act - Assert
-        $this->assertTrue($salesOrder->status()->canBe(StatusStates::Approved));
-
-        // @todo see how to handle this
-        //        $this->assertFalse($salesOrder->status()->canBe('declined'));
-    }
-
-    /** @test */
-    public function should_throw_exception_for_invalid_state_on_transition(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create([
-          'status' => StatusStates::Approved,
-        ]);
-
-        $this->assertFalse($salesOrder->status()->canBe(StatusStates::Pending));
-
-        $this->expectException(TransitionNotAllowedException::class);
-        $salesOrder->status()->transitionTo(StatusStates::Pending);
-
-    }
-
-    /** @test */
-    public function should_throw_exception_for_class_guard_on_transition(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
-
-
-        $this->assertTrue($salesOrder->fulfillment()
-          ->canBe(FulfillmentStates::Partial));
-
-        $this->expectException(TransitionGuardException::class);
-        $salesOrder->fulfillment()->transitionTo(FulfillmentStates::Partial);
-
-    }
-
-    public function should_throw_exception_for_inline_guard_on_transition(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
-
-
-        $this->expectException(TransitionGuardException::class);
-        $salesOrder->status()->transitionTo(StatusStates::Processed);
-
-    }
-
-    /** @test */
-    public function should_record_history_when_transitioning_to_next_state(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $this->assertTrue($salesOrder->status()
-          ->stateMachine()
-          ->recordHistory());
-
-        $this->assertEquals(1, $salesOrder->status()->history()->count());
-
-        //Act
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertEquals(2, $salesOrder->status()->history()->count());
-    }
-
-    /** @test */
-    public function should_record_history_when_creating_model(): void
-    {
-        //Arrange
-        $dummySalesOrder = new SalesOrder();
-
-        $stateMachine = new StateMachine(
-          'status', $dummySalesOrder,
-          StatusStates::class
-        );
-
-        $this->assertTrue($stateMachine->recordHistory());
-
-        //Act
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertEquals(1, $salesOrder->status()->history()->count());
-    }
-
-    /** @test */
-    public function should_save_auth_user_as_responsible_in_record_history_when_creating_model(
-    ): void
-    {
-        //Arrange
-        $salesManager = factory(SalesManager::class)->create();
+        $salesManager = SalesManager::factory()->create();
 
         $this->actingAs($salesManager);
 
         //Act
-        $salesOrder = factory(SalesOrder::class)->create();
+        $salesOrder = SalesOrder::factory()->create();
 
         //Assert
         $salesOrder->refresh();
 
         $this->assertEquals($salesManager->id,
-          $salesOrder->status()->responsible()->id);
-    }
+            $salesOrder->syncState()->responsible()->id);
+    });
 
-    /** @test */
-    public function should_not_record_history_when_creating_model_if_record_history_turned_off(
-    ): void
-    {
+
+it('can record history with custom properties when transitioning to next state',
+    function (): void {
         //Arrange
-        $dummySalesOrder = new SalesOrder();
-
-        $stateMachine = new StateMachine('fulfillment', $dummySalesOrder,
-          FulfillmentStates::class);
-
-        $this->assertFalse($stateMachine->recordHistory());
+        $salesOrder = SalesOrder::factory()->create();
 
         //Act
-        $salesOrder = factory(SalesOrder::class)->create([
-          'fulfillment' => FulfillmentStates::Pending,
-        ]);
+        $comments = 'Test';
+
+        $salesOrder
+            ->state()
+            ->transitionTo(
+                State::Intermediate,
+                ['comments' => $comments]
+            );
 
         //Assert
         $salesOrder->refresh();
 
-        $this->assertEquals(0, $salesOrder->fulfillment()->history()->count());
-    }
-
-    /** @test */
-    public function can_record_history_with_custom_properties_when_transitioning_to_next_state(
-    ): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        //Act
-        $comments = $this->faker->sentence;
-
-        $salesOrder->status()->transitionTo(StatusStates::Approved, [
-          'comments' => $comments,
-        ]);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Approved));
-
-        $this->assertEquals($comments,
-          $salesOrder->status()->getCustomProperty('comments'));
-    }
-
-    /** @test */
-    public function can_check_if_previous_state_was_transitioned(): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        //Act
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
-
-        $salesOrder->status()->transitionTo(StatusStates::Processed);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertTrue($salesOrder->status()->was(StatusStates::Approved));
-        $this->assertTrue($salesOrder->status()->was(StatusStates::Processed));
-
-        $this->assertEquals(1,
-          $salesOrder->status()->timesWas(StatusStates::Approved));
-        $this->assertEquals(1,
-          $salesOrder->status()->timesWas(StatusStates::Processed));
-
-        $this->assertNotNull($salesOrder->status()
-          ->whenWas(StatusStates::Approved));
-        $this->assertNotNull($salesOrder->status()
-          ->whenWas(StatusStates::Processed));
-
-    }
-
-    /** @test */
-    public function can_record_postponed_transition(): void
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        $salesManager = factory(SalesManager::class)->create();
-
-        //Act
-        $customProperties = [
-          'comments' => $this->faker->sentence,
-        ];
-
-        $responsible = $salesManager;
-
-        $postponedTransition = $salesOrder->status()->postponeTransitionTo(
-          StatusStates::Approved,
-          Carbon::tomorrow()->startOfDay(),
-          $customProperties,
-          $responsible
+        $this->assertTrue(
+            $salesOrder
+                ->state()
+                ->is(State::Intermediate)
         );
 
-        //Assert
-        $this->assertNotNull($postponedTransition);
+        $this->assertEquals(
+            $comments,
+            $salesOrder->state()->getCustomProperty('comments')
+        );
+    });
 
-        $salesOrder->refresh();
 
-        $this->assertTrue($salesOrder->status()->is(StatusStates::Pending));
+it('can check if previous state was transitioned', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
 
-        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
+    //Act
+    $salesOrder->state()->transitionTo(State::Intermediate);
 
-        /** @var \byteit\LaravelExtendedStateMachines\Models\PostponedTransition $postponedTransition */
-        $postponedTransition = $salesOrder->status()
-          ->postponedTransitions()
-          ->first();
+    $salesOrder->state()->transitionTo(State::Finished);
 
-        $this->assertEquals('status', $postponedTransition->field);
+    //Assert
+    $salesOrder->refresh();
 
-        $this->assertEquals(StatusStates::Pending,
-          $postponedTransition->from);
-        $this->assertEquals(StatusStates::Approved,
-          $postponedTransition->to);
+    $this->assertTrue(
+        $salesOrder
+            ->state()
+            ->was(State::Intermediate)
+    );
 
-        $this->assertEquals(Carbon::tomorrow()->startOfDay(),
-          $postponedTransition->transition_at);
+    $this->assertTrue(
+        $salesOrder
+            ->state()
+            ->was(State::Finished)
+    );
 
-        $this->assertEquals($customProperties,
-          $postponedTransition->custom_properties);
+    $this->assertEquals(
+        1,
+        $salesOrder->state()->timesWas(State::Intermediate)
+    );
 
-        $this->assertNull($postponedTransition->applied_at);
+    $this->assertEquals(
+        1,
+        $salesOrder->state()->timesWas(State::Finished)
+    );
 
-        $this->assertEquals($salesOrder->id, $postponedTransition->model->id);
+    $this->assertNotNull(
+        $salesOrder
+            ->state()
+            ->whenWas(State::Intermediate)
+    );
 
-        $this->assertEquals($salesManager->id,
-          $postponedTransition->responsible->id);
-    }
+    $this->assertNotNull(
+        $salesOrder
+            ->state()
+            ->whenWas(State::Finished)
+    );
 
-    /** @test */
-    public function should_cancel_all_postponed_transitions_when_transitioning_to_next_state(
-    )
-    {
+});
+
+
+it('can record postponed transition', function (): void {
+    //Arrange
+    $salesOrder = SalesOrder::factory()->create();
+
+    $salesManager = SalesManager::factory()->create();
+
+    //Act
+    $customProperties = [
+        'comments' => 'test',
+    ];
+
+    $responsible = $salesManager;
+
+    $postponedTransition = $salesOrder->syncState()->postponeTransitionTo(
+        StateWithSyncAction::SyncAction,
+        Carbon::tomorrow()->startOfDay(),
+        $customProperties,
+        $responsible
+    );
+
+    //Assert
+    $this->assertNotNull($postponedTransition);
+
+    $salesOrder->refresh();
+
+    $this->assertTrue($salesOrder->syncState()
+        ->is(StateWithSyncAction::Created));
+
+    $this->assertTrue($salesOrder->syncState()->hasPostponedTransitions());
+
+    /** @var \byteit\LaravelExtendedStateMachines\Models\PostponedTransition $postponedTransition */
+    $postponedTransition = $salesOrder->syncState()
+        ->postponedTransitions()
+        ->first();
+
+    $this->assertEquals('sync_state', $postponedTransition->field);
+
+    $this->assertEquals(StateWithSyncAction::Created,
+        $postponedTransition->from);
+    $this->assertEquals(StateWithSyncAction::SyncAction,
+        $postponedTransition->to);
+
+    $this->assertEquals(Carbon::tomorrow()->startOfDay(),
+        $postponedTransition->transition_at);
+
+    $this->assertEquals($customProperties,
+        $postponedTransition->custom_properties);
+
+    $this->assertNull($postponedTransition->applied_at);
+
+    $this->assertEquals($salesOrder->id, $postponedTransition->model->id);
+
+    $this->assertEquals($salesManager->id,
+        $postponedTransition->responsible->id);
+});
+
+
+it('should throw exception for invalid state on postponed transition',
+    function () {
         //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
-
-        factory(PostponedTransition::class)->times(5)->create([
-          'field' => 'status',
-          'model_id' => $salesOrder->id,
-          'model_type' => SalesOrder::class,
-          'states' => FulfillmentStates::class,
-          'from' => FulfillmentStates::Pending,
-          'to' => FulfillmentStates::Partial,
-        ]);
-
-        factory(PostponedTransition::class)->times(5)->create([
-          'field' => 'fulfillment',
-          'model_id' => $salesOrder->id,
-          'model_type' => SalesOrder::class,
-          'states' => FulfillmentStates::class,
-          'from' => FulfillmentStates::Pending,
-          'to' => FulfillmentStates::Partial,
-        ]);
-
-        $this->assertTrue($salesOrder->status()->hasPostponedTransitions());
-        $this->assertTrue($salesOrder->fulfillment()->hasPostponedTransitions());
-
-        //Act
-        $salesOrder->status()->transitionTo(StatusStates::Approved);
-
-        //Assert
-        $salesOrder->refresh();
-
-        $this->assertFalse($salesOrder->status()->hasPostponedTransitions());
-        $this->assertTrue($salesOrder->fulfillment()->hasPostponedTransitions());
-    }
-
-    /** @test */
-    public function should_throw_exception_for_invalid_state_on_postponed_transition(
-    )
-    {
-        //Arrange
-        $salesOrder = factory(SalesOrder::class)->create();
+        $salesOrder = SalesOrder::factory()->create();
 
         $this->expectException(TransitionNotAllowedException::class);
 
-        $salesOrder->status()
-          ->postponeTransitionTo(StatusWithBeforeTransitionHookStates::Approved, Carbon::tomorrow());
+        $salesOrder->state()->postponeTransitionTo(
+            State::Finished,
+            Carbon::tomorrow()
+        );
 
-    }
+    });
 
-}

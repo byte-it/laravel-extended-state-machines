@@ -29,7 +29,6 @@ use Illuminate\Support\Facades\Queue;
  */
 class PendingTransition implements TransitionContract
 {
-
     use SerializesModels;
 
     protected array $guards = [];
@@ -49,6 +48,7 @@ class PendingTransition implements TransitionContract
      * @param  States|null  $from
      * @param  States  $to
      * @param  Model&\byteit\LaravelExtendedStateMachines\Traits\HasStateMachines  $model
+     * @param  string  $field
      * @param  array|Arrayable|ArrayAccess  $customProperties
      * @param  mixed  $responsible
      */
@@ -57,6 +57,7 @@ class PendingTransition implements TransitionContract
       public readonly States|null $from,
       public readonly States $to,
       public readonly Model $model,
+      public readonly string $field,
       public array|Arrayable|ArrayAccess $customProperties,
       public readonly mixed $responsible
     ) {
@@ -95,7 +96,6 @@ class PendingTransition implements TransitionContract
      * @return \byteit\LaravelExtendedStateMachines\Contracts\Transition
      * @throws \Illuminate\Auth\Access\AuthorizationException
      * @throws \byteit\LaravelExtendedStateMachines\Exceptions\TransitionGuardException
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException|
      */
     public function dispatch(): TransitionContract
     {
@@ -206,7 +206,7 @@ class PendingTransition implements TransitionContract
             $queue = TransitionAction::queue($actionInstance);
             $connection = TransitionAction::connection($actionInstance);
 
-            Queue::connection($connection)->pushOn($queue, $actionInstance);
+            Queue::connection($connection)->pushOn($queue, $job);
         }
         else {
             app()->call([$job, 'handle']);
@@ -217,13 +217,15 @@ class PendingTransition implements TransitionContract
 
     public function finishAction(): void
     {
-        $this->changes = array_merge_recursive(
+
+        $this->model->{$this->field} = $this->to;
+
+        $this->changes = array_merge(
           $this->changes,
           $this->model->getChangedAttributes()
         );
         $this->pending = false;
 
-        $this->model->{$this->stateMachine->field} = $this->to;
 
         $this->model->save();
 
@@ -240,7 +242,7 @@ class PendingTransition implements TransitionContract
     public function toTransition(): TransitionContract
     {
         $properties = [
-          'field' => $this->stateMachine->field,
+          'field' => $this->field,
           'from' => $this->from,
           'to' => $this->to,
           'states' => $this->to::class,
